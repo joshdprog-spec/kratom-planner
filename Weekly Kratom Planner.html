@@ -682,7 +682,10 @@
   document.getElementById("tab-p1").addEventListener("click", function(){ switchProfile("p1"); });
   document.getElementById("tab-p2").addEventListener("click", function(){ switchProfile("p2"); });
   document.getElementById("renameBtn").addEventListener("click", function(){
-    var nm = prompt("Name for this profile:", P().name);
+    var nm = null;
+    try { nm = window.prompt("Name for this profile:", P().name); }
+    catch(e){ nm = null; }   // some embedded browsers don't support prompt()
+    if (nm === null && typeof window.prompt !== "function"){ alert("Renaming isn't available in this browser."); return; }
     if (nm && nm.trim()){ P().name = nm.trim().slice(0, 16); saveState(); renderProfileBar(); }
   });
 
