@@ -443,6 +443,9 @@
     .fact { font-size: 13px; }
   }
 
+  .facts details.more > summary { border-top: none; padding-top: 2px; }
+  .facts details.more { margin-top: 0; }
+  .facts .fact { margin-top: 10px; }
   .facts {
     border: 1px solid rgba(201,162,90,0.35);
     background:
@@ -592,6 +595,9 @@
 
     <div class="panel journal" id="journalPanel" data-view="week" style="display:none">
       <h2>Tonight's Journal</h2>
+      <div class="gist" id="jGist"></div>
+      <div class="jtrend" id="jtrend"></div>
+      <details class="more" data-more="jf"><summary>Rate tonight, history</summary>
       <div class="jrow">
         <label>Buzz:
           <select id="jbuzz"><option value="">–</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
@@ -602,8 +608,6 @@
         <input class="noteinput" id="jnote" maxlength="90" placeholder="note — strain standouts, duds, mood...">
         <button id="jsave">Save</button>
       </div>
-      <div class="jtrend" id="jtrend"></div>
-      <details class="more" data-more="jh"><summary>History</summary>
       <div class="jhist" id="jhist"></div>
       </details>
     </div>
@@ -685,9 +689,10 @@
     </div>
 
     <div class="panel facts" data-view="week">
-      <h2>Did You Know</h2>
+      <details class="more" data-more="fx"><summary>Did you know &mdash; a fact about kratom or kava</summary>
       <div class="fact" id="factText"></div>
       <div class="fact-controls"><button id="nextFact">Another one</button></div>
+      </details>
     </div>
 
     <div class="footer">Personal reference &middot; not medical advice &middot; consult a healthcare provider with any medication interactions &middot; do not combine with prescription medications</div>
@@ -1314,6 +1319,16 @@
     panel.style.display = "";
     var tk = todayKey();
     var entry = p.journal[tk] || {};
+    var jg = document.getElementById("jGist");
+    if (entry.buzz || entry.sleep || entry.note){
+      jg.innerHTML = '<span class="line">Tonight: ' + (entry.buzz ? 'buzz <b>' + entry.buzz + '</b>' : '') + (entry.sleep ? (entry.buzz ? ' \u00b7 ' : '') + 'sleep <b>' + entry.sleep + '</b>' : '') +
+        (entry.note ? ' \u00b7 ' + entry.note.replace(/</g,"&lt;") : '') + (entry.strains && entry.strains.length ? '<br><span style="font-size:9.5px;font-style:italic">' + strainNames(entry.strains) + '</span>' : '') + '</span>';
+    } else {
+      var n = Object.keys(p.journal).length;
+      jg.innerHTML = '<span class="line">Not rated tonight.' + (n ? ' ' + n + ' night' + (n > 1 ? 's' : '') + ' on record.' : '') + '</span>';
+      // an unrated night opens the form by itself
+      document.querySelector('details[data-more="jf"]').open = true;
+    }
     document.getElementById("jbuzz").value = entry.buzz || "";
     document.getElementById("jsleep").value = entry.sleep || "";
     document.getElementById("jnote").value = entry.note || "";
