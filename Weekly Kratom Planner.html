@@ -1579,14 +1579,14 @@
     pr.variants.filter(function(v){ return v.count && v.available && (!forms || forms.indexOf(v.form) !== -1); }).forEach(function(v){
       var used1 = Math.min(v.count, need);
       opts.push({ kind: "one", v: v, label: v.label + " one-time", cashNow: v.price, perServ: v.price / used1 * servCe,
-                  coversDays: v.count / perDay, link: SITE + "/cart/" + v.id + ":1" });
+                  annual: v.price * Math.max(1, need / v.count), coversDays: v.count / perDay, link: SITE + "/cart/" + v.id + ":1" });
       // a coming sale on this strain: one-time at the sale price, if stock lasts until then
       if (soon && soon.percent && daysLeft !== null){
         var inDays = Math.ceil((Date.parse(soon.startsAt) - Date.now()) / 86400000);
         if (inDays + state.leadDays <= daysLeft){
           var sp = v.price * (1 - soon.percent / 100);
           opts.push({ kind: "sale", v: v, label: v.label + " on " + shortDate(soon.startsAt) + " (" + soon.percent + "% off)", cashNow: sp,
-                      perServ: sp / used1 * servCe, coversDays: v.count / perDay, when: soon, link: SITE + "/cart/" + v.id + ":1" });
+                      perServ: sp / used1 * servCe, annual: sp * Math.max(1, need / v.count), coversDays: v.count / perDay, when: soon, link: SITE + "/cart/" + v.id + ":1" });
         }
       }
       plansFor(k).forEach(function(pl){
@@ -1596,27 +1596,27 @@
         var deliveries = H / pl.days;
         var delivered = v.count * deliveries, usedS = Math.min(delivered, need);
         opts.push({ kind: "sub", v: v, plan: pl, label: v.label + " subscription " + pl.name, cashNow: price,
-                    perServ: (price * deliveries) / usedS * servCe, coversDays: pl.days, surplus: rate / perDay - 1,
+                    perServ: (price * deliveries) / usedS * servCe, annual: price * deliveries, coversDays: pl.days, surplus: rate / perDay - 1,
                     link: SITE + "/cart/" + v.id + ":1?selling_plan=" + pl.id });
       });
     });
     return opts;
   }
-  // Joshua's rule: cheapest over time wins; anything within 5% of it is a tie, and the tie goes to the lowest price today.
+  // Joshua's rule: the least money out of his pocket over a year of his use wins. Anything within 5% of
+  // that is a tie, and the tie goes to whichever asks for less money up front.
   function bestBuy(k, perDay, soon, daysLeft, forms){
     var opts = buyOptions(k, perDay, soon, daysLeft, forms);
     if (!opts.length) return null;
-    var minServ = Math.min.apply(null, opts.map(function(o){ return o.perServ; }));
-    var ties = opts.filter(function(o){ return o.perServ <= minServ * 1.05; });
+    var minAnnual = Math.min.apply(null, opts.map(function(o){ return o.annual; }));
+    var ties = opts.filter(function(o){ return o.annual <= minAnnual * 1.05; });
     ties.sort(function(a, b){ return a.cashNow - b.cashNow; });
     var pick = ties[0];
-    // the natural comparison: the cheapest-now option that isn't the pick, and the cheapest-over-time one
     var cheapestNow = opts.slice().sort(function(a,b){ return a.cashNow - b.cashNow; })[0];
-    var cheapestTime = opts.slice().sort(function(a,b){ return a.perServ - b.perServ; })[0];
+    var cheapestTime = opts.slice().sort(function(a,b){ return a.annual - b.annual; })[0];
     return { pick: pick, cheapestNow: cheapestNow, cheapestTime: cheapestTime, all: opts };
   }
   function optText(o){
-    return o.label + " \u2014 " + money(o.cashNow) + (o.kind === "sub" ? " per delivery" : " now") + ", " + (o.perServ * 100).toFixed(0) + "\u00a2 a serving";
+    return o.label + " \u2014 about " + money(o.annual) + "/yr, " + money(o.cashNow) + (o.kind === "sub" ? " per delivery" : " up front") + " (" + (o.perServ * 100).toFixed(0) + "\u00a2 a serving)";
   }
 
   // ---------- orders ----------
@@ -1744,8 +1744,8 @@
         if (!bb) return;
         txt += '<div>' + (pool.label ? '<i>' + pool.label + '</i> \u00b7 ' : '') + '~' + (pool.perDay * 7).toFixed(0) + (k === "KAVA" ? ' gummies' : ' caps') + '-worth/week. ';
         txt += '<span class="opt win">' + optText(bb.pick) + '<span class="tagw">pick</span></span>';
-        if (bb.cheapestNow !== bb.pick) txt += '<span class="opt">cheapest today: ' + optText(bb.cheapestNow) + '</span>';
-        if (bb.cheapestTime !== bb.pick && bb.cheapestTime !== bb.cheapestNow) txt += '<span class="opt">cheapest over time: ' + optText(bb.cheapestTime) + '</span>';
+        if (bb.cheapestNow !== bb.pick) txt += '<span class="opt">least up front: ' + optText(bb.cheapestNow) + '</span>';
+        if (bb.cheapestTime !== bb.pick && bb.cheapestTime !== bb.cheapestNow) txt += '<span class="opt">least over the year: ' + optText(bb.cheapestTime) + '</span>';
         (pool.altForms || []).forEach(function(f){
           var ab = bestBuy(k, pool.perDay, soon, pdays, [f]);
           if (ab) txt += '<span class="opt">as ' + FORMS[f] + ': ' + optText(ab.pick) + '</span>';
@@ -1762,7 +1762,7 @@
       }
       lines.push('<div>' + txt + '</div>');
     });
-    if (lines.length){ box.innerHTML = '<h3>Subscribe or buy?</h3><div class="no" style="border:none;padding-bottom:6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Rule: cheapest per serving over a year of your actual use wins (stock you would not get through in a year counts as money tied up, not savings); within 5% of that, the lowest price today wins.</div>' + lines.join(""); }
+    if (lines.length){ box.innerHTML = '<h3>Subscribe or buy?</h3><div class="no" style="border:none;padding-bottom:6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Rule: the least total money out of your pocket over a year of your actual use wins. Stock you would not get through in a year is money spent, not savings. When two options are within 5% of each other, the one that asks for less up front wins.</div>' + lines.join(""); }
   }
 
   function renderOrders(){
