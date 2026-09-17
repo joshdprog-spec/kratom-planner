@@ -40,4 +40,4 @@ A GitHub Actions workflow (`.github/workflows/refresh-supplier.yml`) runs it dai
 
 ## Hosting
 
-The app is static. Any static host works; GitHub Pages on this repository is the simplest, with the Actions workflow keeping the deal data fresh.
+The app is static and published with GitHub Pages at https://joshdprog-spec.github.io/kratom-planner/ (the root `index.html` just redirects to the app file). Any other static host works too; the Actions workflow keeps the deal data fresh either way.
