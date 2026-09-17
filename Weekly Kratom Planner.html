@@ -141,6 +141,13 @@
   .opts label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
   .opts input[type=checkbox], .opts input[type=radio] { accent-color: var(--gold); width: 16px; height: 16px; }
   .opts.serve { margin-top: 10px; }
+  .opts.days { margin-top: 10px; gap: 6px 10px; }
+  .opts.days label { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--tint-deep); }
+  .opts.days label:has(input:checked) { border-color: var(--gold-soft); color: var(--ink); background: var(--tint-gold); }
+  td.offday { color: var(--ink-faint); font-style: italic; }
+  tbody tr.off td.dn { color: var(--ink-faint); }
+  .today .slot.off { border-style: dashed; border-color: var(--line-strong); }
+  .today .slot.off .what { color: var(--ink-dim); }
   .opts.serve input[type=number] { width: 60px; padding: 4px 6px; font-size: 13px; }
   .opts.serve .eq { width: 100%; text-align: center; font-size: 12px; color: var(--ink-faint); }
   .brk { color: var(--yellow); font-weight: 600; }
@@ -429,13 +436,15 @@
       <div class="invsub" id="howHead">How you take it</div>
       <div class="hint" id="howHint">Your usual amounts, not ours. One capsule is 500 mg of leaf; if you use powder, 1 g counts as 2 capsules, and a 300 mg tablet as 0.6. You can change any of this later under the week's slider.</div>
       <div class="opts" id="howDoses">
-        <label><input type="radio" name="howLate" value="0" checked> Two doses a day: day and night</label>
-        <label><input type="radio" name="howLate" value="1"> Three: day, night, and a late dose when needed</label>
+        <label><input type="radio" name="howLate" value="1"> One dose a day</label>
+        <label><input type="radio" name="howLate" value="2" checked> Two: day and night</label>
+        <label><input type="radio" name="howLate" value="3"> Three: day, night, and a late dose when needed</label>
       </div>
+      <div class="opts days" id="howDays"><span>Days you take it:</span><label><input type="checkbox" data-day="0" checked> Sun</label><label><input type="checkbox" data-day="1" checked> Mon</label><label><input type="checkbox" data-day="2" checked> Tue</label><label><input type="checkbox" data-day="3" checked> Wed</label><label><input type="checkbox" data-day="4" checked> Thu</label><label><input type="checkbox" data-day="5" checked> Fri</label><label><input type="checkbox" data-day="6" checked> Sat</label></div>
       <div class="opts serve" id="howServe">
         <span>Capsules a dose:</span>
         <label>Day <input type="number" id="howDay" min="0.5" max="12" step="0.5" placeholder="e.g. 3"></label>
-        <label>Night <input type="number" id="howNight" min="0.5" max="12" step="0.5" placeholder="e.g. 3"></label>
+        <label id="howNightWrap">Night <input type="number" id="howNight" min="0.5" max="12" step="0.5" placeholder="e.g. 3"></label>
         <label id="howLateWrap" style="display:none">Late <input type="number" id="howLateN" min="0.5" max="12" step="0.5" placeholder="e.g. 2"></label>
       </div>
       <div class="invsub">Backup</div>
@@ -473,9 +482,15 @@
         <div class="end right"><b>Unwound</b> buzz &amp; ease</div>
       </div>
       <div class="vibe" id="vibeText"></div>
-      <div class="hint">Three slots a day: a <b>Day</b> dose, a <b>Night</b> dose, and an optional <b>Late</b> dose for nights that need it. The slider decides which colours fill each slot; the rules keep any strain from repeating back to back. Untick Late for two-dose days.</div>
+      <div class="hint">Up to three slots a day: a <b>Day</b> dose, a <b>Night</b> dose, and a <b>Late</b> dose for nights that need it. Say how many doses you take and on which days; the slider decides which colours fill the slots, and the rotation keeps any strain from repeating on consecutive dose days.</div>
       <div class="opts">
-        <label><input type="checkbox" id="threeDose" checked> Late column (three-dose days)</label>
+        <label>Doses a day:
+          <select id="doses">
+            <option value="1">one, Day only</option>
+            <option value="2">two, Day and Night</option>
+            <option value="3">three, with a Late dose when needed</option>
+          </select>
+        </label>
         <label>Reserve strain:
           <select id="sigCount">
             <option value="0">None this week</option>
@@ -485,6 +500,7 @@
         </label>
         <label title="Greens by day, reds by night, smaller servings, no Late column, no reserve strain"><input type="checkbox" id="breakWeek"> <span class="brk">Break week</span></label>
       </div>
+      <div class="opts days" id="dayPick"><span>Days you take it:</span><label><input type="checkbox" data-day="0"> Sun</label><label><input type="checkbox" data-day="1"> Mon</label><label><input type="checkbox" data-day="2"> Tue</label><label><input type="checkbox" data-day="3"> Wed</label><label><input type="checkbox" data-day="4"> Thu</label><label><input type="checkbox" data-day="5"> Fri</label><label><input type="checkbox" data-day="6"> Sat</label></div>
       <div class="opts serve">
         <span>Capsules a dose:</span>
         <label>Day <input type="number" id="srvDay" min="0.5" max="12" step="0.5"></label>
@@ -511,7 +527,7 @@
       <details class="more" data-more="wk"><summary>Full week, rules, saved weeks</summary>
       <div class="stamp" id="stamp"></div>
       <div class="tablewrap"><table>
-        <thead><tr><th>Day</th><th>Day</th><th>Night</th><th id="lateHead">Late (only if needed)</th></tr></thead>
+        <thead><tr><th>Day</th><th>Day</th><th id="nightHead">Night</th><th id="lateHead">Late (only if needed)</th></tr></thead>
         <tbody id="tbody"></tbody>
       </table></div>
       <div class="standing" id="standing">
@@ -673,12 +689,13 @@
   }
   var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   var SERVING = { day: 3, night: 3, late: 2, brk: 2 };   // default capsules a dose; each profile keeps its own in p.serve
+  var ALL_DAYS = [true, true, true, true, true, true, true];   // dose days default: every day
   function serveOf(p, slot){ var sv = p.serve || SERVING; return p.breakWeek ? sv.brk : sv[slot]; }
   function capsText(n){ return n + (n === 1 ? " cap" : " caps"); }
   function serveText(p){
     var sv = p.serve || SERVING;
-    if (p.breakWeek) return capsText(sv.brk) + " a serving, Day and Night only";
-    return capsText(sv.day) + " Day \u00b7 " + capsText(sv.night) + " Night" + (p.hasLate ? " \u00b7 " + capsText(sv.late) + " Late (only if needed)" : "");
+    if (p.breakWeek) return capsText(sv.brk) + " a serving, " + (dosesOf(p) >= 2 ? "Day and Night only" : "Day only");
+    return capsText(sv.day) + " Day" + (dosesOf(p) >= 2 ? " \u00b7 " + capsText(sv.night) + " Night" : "") + (effLate(p) ? " \u00b7 " + capsText(sv.late) + " Late (only if needed)" : "");
   }
   function servingCaps(){ return (P().serve || SERVING).day || SERVING.day; }   // "a serving" in price comparisons
   var LOW_AT = { default: 15, item: 5 };
@@ -746,12 +763,16 @@
       if (p.sigCount === undefined) p.sigCount = p.sigTwice ? 2 : 1;
       if (p.breakWeek === undefined) p.breakWeek = false;
       if (!p.saved) p.saved = [];
+      if (!p.doses) p.doses = p.hasLate ? 3 : 2;
+      p.doses = Math.max(1, Math.min(3, p.doses | 0)); p.hasLate = p.doses === 3;
+      if (!p.days || p.days.length !== 7) p.days = ALL_DAYS.slice();
+      p.days = p.days.map(function(x){ return !!x; }); if (!p.days.some(Boolean)) p.days = ALL_DAYS.slice();
       if (!p.serve) p.serve = {};
       ["day","night","late","brk"].forEach(function(k){ var n = parseFloat(p.serve[k]); p.serve[k] = n > 0 ? Math.min(12, Math.round(n * 2) / 2) : SERVING[k]; });
       if (p.week && !p.weekId) p.weekId = "w" + Date.now().toString(36);
       delete p.sigTwice; delete p.kavaMode;
       // a week that names a product this catalog doesn't know (or an item) can't be kept
-      if (p.week && p.week.some(function(d){ return [d.day, d.night, d.late].some(function(k){ return k && (!S[k] || isItem(k)); }); })){
+      if (p.week && p.week.some(function(d){ return d && [d.day, d.night, d.late].some(function(k){ return k && (!S[k] || isItem(k)); }); })){
         p.week = null; p.weekStamp = null; p.checks = {};
       }
     });
@@ -784,6 +805,11 @@
   }
   // effective Late column for a profile's current week
   function effLate(p){ return !!p.hasLate && !p.breakWeek; }
+  function dosesOf(p){ var n = p.doses || (p.hasLate ? 3 : 2); return p.breakWeek ? Math.min(n, 2) : n; }
+  function dosesText(p){
+    var n = dosesOf(p), c = (p.days || ALL_DAYS).filter(Boolean).length;
+    return (n === 1 ? "one dose" : n === 2 ? "two doses" : "three doses") + " a day, " + (c === 7 ? "every day" : c + (c === 1 ? " day" : " days") + " a week");
+  }
   function P(){ return state.profiles[state.activeProfile]; }
 
   // ---------- shared storage ----------
@@ -860,18 +886,15 @@
     return {day:day, night:night, late:late};
   }
 
-  // Pick `n` Day slots for Signature Reserve, never on consecutive days
-  // (the week wraps, so Saturday and Sunday count as neighbours too).
-  function sigDays(n, rng){
-    if (n <= 0) return [];
-    var a = Math.floor(rng()*7);
-    if (n === 1) return [a];
+  // Pick `n` reserve-strain positions among the `count` active dose days, never on
+  // neighbouring dose days (the sequence wraps).
+  function sigDays(n, count, rng){
+    if (n <= 0 || count <= 0) return [];
+    var a = Math.floor(rng()*count);
+    if (n === 1 || count < 4) return [a];
     var choices = [];
-    for (var d = 0; d < 7; d++){
-      var gap = Math.abs(d - a);
-      if (gap >= 2 && gap <= 5) choices.push(d);
-    }
-    return [a, choices[Math.floor(rng()*choices.length)]];
+    for (var i = 0; i < count; i++){ var gap = Math.abs(i - a); if (gap >= 2 && gap <= count - 2) choices.push(i); }
+    return choices.length ? [a, choices[Math.floor(rng()*choices.length)]] : [a];
   }
   function pick(pool, rng){ return pool[Math.floor(rng()*pool.length)]; }
   function mulberry32(a){
@@ -882,55 +905,59 @@
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
-  function validWeek(w, hasLate){
-    for (var d = 0; d < 7; d++){
-      var n = (d+1) % 7;
-      var slots = hasLate ? [w[d].day, w[d].night, w[d].late] : [w[d].day, w[d].night];
+  // `act` is the list of dose days in order; consecutive means consecutive dose days, wrapping
+  function validWeek(w, hasLate, doses, act){
+    function isRed(k){ return S[k].color === "r"; }
+    var n = act.length;
+    for (var i = 0; i < n; i++){
+      var cur = w[act[i]], next = w[act[(i+1) % n]];
+      var slots = [cur.day]; if (doses >= 2) slots.push(cur.night); if (hasLate) slots.push(cur.late);
       if (new Set(slots).size !== slots.length) return false;
-      if (w[d].day === w[n].day) return false;
-      if (w[d].night === w[n].night) return false;
-      if (hasLate && w[d].late === w[n].late) return false;
-      function isRed(k){ return S[k].color === "r"; }
-      if (hasLate){
-        if (isRed(w[d].night) && w[d].night === w[d].late) return false;
-        if (isRed(w[d].late) && w[d].late === w[n].night) return false;
-      }
-      if (isRed(w[d].night) && w[d].night === w[n].night) return false;
+      if (hasLate && isRed(cur.night) && cur.night === cur.late) return false;
+      if (n < 2) continue;
+      if (cur.day === next.day) return false;
+      if (doses >= 2 && cur.night === next.night) return false;
+      if (hasLate && cur.late === next.late) return false;
+      if (hasLate && isRed(cur.late) && cur.late === next.night) return false;
     }
     return true;
   }
-  function generate(v, hasLate, sigCount, seed, breakWeek){
+  function generate(v, hasLate, sigCount, seed, breakWeek, doses, days){
     var p = poolsFor(v, breakWeek);
-    if (breakWeek){ sigCount = 0; hasLate = false; }
+    doses = doses || (hasLate ? 3 : 2);
+    if (breakWeek){ sigCount = 0; hasLate = false; doses = Math.min(doses, 2); }
+    if (doses < 3) hasLate = false;
+    var act = []; (days || ALL_DAYS).forEach(function(on, i){ if (on) act.push(i); });
+    if (!act.length) return null;
     var QS = quotaStrain(); if (!QS) sigCount = 0;
+    var maxSig = Math.max(1, Math.floor(act.length / 2)); if (sigCount > maxSig) sigCount = maxSig;
     var rng = mulberry32(seed);
     function isRed(k){ return S[k].color === "r"; }
     for (var attempt = 0; attempt < 4000; attempt++){
-      var w = [];
+      var w = [null, null, null, null, null, null, null];
       var ok = true;
-      var srOn = sigDays(sigCount, rng);   // quota: exactly this many SR days
-      for (var d = 0; d < 7 && ok; d++){
-        var prev = d > 0 ? w[d-1] : null;
+      var srOn = sigDays(sigCount, act.length, rng).map(function(i){ return act[i]; });   // quota: exactly this many reserve days
+      for (var i = 0; i < act.length && ok; i++){
+        var d = act[i], prev = i > 0 ? w[act[i-1]] : null;
         var dayPick;
         if (srOn.indexOf(d) !== -1){
           dayPick = QS;
         } else {
-          var dayPool = p.day.filter(function(k){
-            if (prev && k === prev.day) return false;
-            return true;
-          });
+          var dayPool = p.day.filter(function(k){ return !(prev && k === prev.day); });
           if (!dayPool.length){ ok = false; break; }
           dayPick = pick(dayPool, rng);
         }
-        var nightPool = p.night.filter(function(k){
-          if (prev && k === prev.night) return false;
-          if (k === dayPick) return false;
-          if (hasLate && prev && isRed(k) && k === prev.late) return false;
-          return true;
-        });
-        if (!nightPool.length){ ok = false; break; }
-        var nightPick = pick(nightPool, rng);
-        var latePick = null;
+        var nightPick = null, latePick = null;
+        if (doses >= 2){
+          var nightPool = p.night.filter(function(k){
+            if (prev && k === prev.night) return false;
+            if (k === dayPick) return false;
+            if (hasLate && prev && isRed(k) && k === prev.late) return false;
+            return true;
+          });
+          if (!nightPool.length){ ok = false; break; }
+          nightPick = pick(nightPool, rng);
+        }
         if (hasLate){
           var latePool = p.late.filter(function(k){
             if (prev && k === prev.late) return false;
@@ -940,13 +967,14 @@
           if (!latePool.length){ ok = false; break; }
           latePick = pick(latePool, rng);
         }
-        w.push({day: dayPick, night: nightPick, late: latePick});
+        w[d] = { day: dayPick, night: nightPick, late: latePick };
       }
       if (!ok) continue;
-      if (!validWeek(w, hasLate)) continue;
+      if (!validWeek(w, hasLate, doses, act)) continue;
       var dset = new Set(), nset = new Set();
-      for (var i = 0; i < 7; i++){ dset.add(w[i].day); nset.add(w[i].night); }
-      if (dset.size < 2 || nset.size < 2) continue;
+      act.forEach(function(d){ dset.add(w[d].day); if (w[d].night) nset.add(w[d].night); });
+      var want = Math.min(2, act.length);
+      if (dset.size < want || (doses >= 2 && nset.size < want)) continue;
       return w;
     }
     return null;
@@ -1007,7 +1035,8 @@
   function syncControls(){
     var p = P();
     slider.value = p.v;
-    document.getElementById("threeDose").checked = p.hasLate;
+    document.getElementById("doses").value = p.doses;
+    [].forEach.call(document.querySelectorAll("#dayPick input"), function(c){ c.checked = !!p.days[+c.getAttribute("data-day")]; });
     document.getElementById("sigCount").value = p.sigCount;
     document.getElementById("breakWeek").checked = !!p.breakWeek;
     document.getElementById("srvDay").value = p.serve.day;
@@ -1046,10 +1075,11 @@
       document.querySelector('details[data-more="ctl"]').open = true;
       return;
     }
-    var hasLate = effLate(p);
+    var hasLate = effLate(p), doses = dosesOf(p);
     var tb = document.getElementById("tbody");
     tb.innerHTML = "";
     document.getElementById("lateHead").style.display = hasLate ? "" : "none";
+    document.getElementById("nightHead").style.display = doses >= 2 ? "" : "none";
     var todayIdx = new Date().getDay();
     for (var d = 0; d < 7; d++){
       var tr = document.createElement("tr");
@@ -1063,29 +1093,37 @@
           '<span class="chk' + (on ? " on" : "") + '" data-d="' + d + '" data-slot="' + slot + '" data-key="' + key + '" title="mark taken">&#10003;</span>' +
           '<span class="pill ' + cls + '">' + tag + '</span><span class="strain">' + s.name + '</span><div class="desc">' + s.desc + "</div></td>";
       }
+      var row = p.week[d];
+      if (!row){
+        tr.className += " off";
+        tr.innerHTML = '<td class="dn">' + DAYS[d] + '</td><td class="offday" colspan="' + doses + '">off day</td>';
+        tb.appendChild(tr); continue;
+      }
       tr.innerHTML = '<td class="dn">' + DAYS[d] + "</td>" +
-        cell(p.week[d].day, "DAY", "day") + cell(p.week[d].night, "NGT", "night") +
-        (hasLate ? cell(p.week[d].late, "LATE", "late") : "");
+        cell(row.day, "DAY", "day") + (doses >= 2 ? cell(row.night, "NGT", "night") : "") +
+        (hasLate ? cell(row.late, "LATE", "late") : "");
       tb.appendChild(tr);
     }
     // today card
     var th = document.getElementById("todayHead"), tg = document.getElementById("todayGist");
     var tchecks = p.checks[todayIdx] || {};
-    var slots = [["day","Day"],["night","Night"]].concat(hasLate ? [["late","Late (if needed)"]] : []);
-    tg.innerHTML = slots.map(function(sl){
-      var key = p.week[todayIdx][sl[0]]; if (!key) return "";
+    var slots = [["day","Day"]].concat(doses >= 2 ? [["night","Night"]] : []).concat(hasLate ? [["late","Late (if needed)"]] : []);
+    var todayRow = p.week[todayIdx];
+    tg.innerHTML = (todayRow ? slots : []).map(function(sl){
+      var key = todayRow[sl[0]]; if (!key) return "";
       var st = S[key], on = !!tchecks[sl[0]];
       var cls = st.color === "g" ? "pg" : st.color === "r" ? "pr" : "pw";
       return '<div class="slot' + (on ? " taken" : "") + '"><span class="chk' + (on ? " on" : "") + '" data-d="' + todayIdx + '" data-slot="' + sl[0] + '" data-key="' + key + '" title="mark taken">&#10003;</span>' +
         '<div class="when">' + sl[1] + '</div><div class="what"><span class="pill ' + cls + '">' + capsText(serveOf(p, sl[0])) + '</span>' + st.name + '</div><div class="desc">' + st.desc + '</div></div>';
-    }).join("") + Object.keys(state.standing).filter(function(k){ return state.standing[k] > 0 && S[k]; }).map(function(k){
+    }).join("") + (todayRow ? "" : '<div class="slot off"><div class="when">Today</div><div class="what">Off day</div><div class="desc">No dose scheduled. Standing items still apply.</div></div>') +
+    Object.keys(state.standing).filter(function(k){ return state.standing[k] > 0 && S[k]; }).map(function(k){
       var slot = "item:" + k, on = !!tchecks[slot], n = state.standing[k];
       return '<div class="slot kava' + (on ? " taken" : "") + '"><span class="chk' + (on ? " on" : "") + '" data-d="' + todayIdx + '" data-slot="' + slot + '" title="took it today">&#10003;</span><div class="when">Standing</div><div class="what"><span class="pill py">' + n + ' ' + units(k, n) + '</span>' + S[k].name + '</div><div class="desc">' + S[k].desc + '</div></div>';
     }).join("");
     th.innerHTML = DAYS[todayIdx] + '<small>' + p.name + (p.breakWeek ? " \u00b7 break week" : "") + '</small>';
     // settings gist
     var cg = document.getElementById("ctlGist");
-    cg.innerHTML = '<span class="line">' + plain(vibeLabel(p.v)).split(".")[0] + '. Signature Reserve ' + (p.sigCount === 0 ? "none" : p.sigCount === 1 ? "once" : "twice") + ' \u00b7 ' + (effLate(p) ? "three-dose days" : "two-dose days") + (p.breakWeek ? ' \u00b7 break week' : '') + (p.weekStamp ? ' \u00b7 generated ' + p.weekStamp : '') + '</span>';
+    cg.innerHTML = '<span class="line">' + plain(vibeLabel(p.v)).split(".")[0] + '. Signature Reserve ' + (p.sigCount === 0 ? "none" : p.sigCount === 1 ? "once" : "twice") + ' \u00b7 ' + dosesText(p) + (p.breakWeek ? ' \u00b7 break week' : '') + (p.weekStamp ? ' \u00b7 generated ' + p.weekStamp : '') + '</span>';
     document.getElementById("rulesServ").textContent = serveText(p) + " \u00b7";
     renderStanding();
     resEl.style.display = "";
@@ -1161,9 +1199,9 @@
     var wd = new Date(dateKey + "T12:00:00").getDay();
     Object.keys(state.profiles).forEach(function(id){
       var p = state.profiles[id]; if (!p.week) return;
-      var day = p.week[wd];
+      var day = p.week[wd]; if (!day) return;
       add(day.day, serveOf(p, "day"), state.place.day);
-      add(day.night, serveOf(p, "night"), state.place.night);
+      if (day.night) add(day.night, serveOf(p, "night"), state.place.night);
       if (effLate(p) && day.late) add(day.late, serveOf(p, "late"), state.place.late);
     });
     Object.keys(state.standing).forEach(function(k){ if (state.standing[k] > 0 && S[k]) add(k, state.standing[k], "away"); });
@@ -1300,8 +1338,8 @@
     var d = new Date().getDay();
     var checks = p.checks[d] || {};
     var out = [];
-    if (p.week){
-      var slots = ["day","night"].concat(effLate(p) ? ["late"] : []);
+    if (p.week && p.week[d]){
+      var slots = ["day"].concat(dosesOf(p) >= 2 ? ["night"] : []).concat(effLate(p) ? ["late"] : []);
       var checked = slots.filter(function(sl){ return !!checks[sl]; });
       (checked.length ? checked : slots).forEach(function(sl){
         var k = p.week[d][sl]; if (k && out.indexOf(k) === -1) out.push(k);
@@ -1437,8 +1475,9 @@
     Object.keys(state.profiles).forEach(function(id){
       var p = state.profiles[id]; if (!p.week) return;
       p.week.forEach(function(d){
+        if (!d) return;
         add(d.day, serveOf(p, "day"), state.place.day);
-        add(d.night, serveOf(p, "night"), state.place.night);
+        if (d.night) add(d.night, serveOf(p, "night"), state.place.night);
         if (effLate(p) && d.late) add(d.late, serveOf(p, "late"), state.place.late);
       });
     });
@@ -2014,7 +2053,7 @@
     var pan = document.getElementById("setupPanel");
     pan.style.display = (!state.setup || settingsOpen) ? "" : "none";
     document.getElementById("setupTitle").textContent = state.setup ? "Settings" : "Welcome";
-    ["howHead","howHint","howDoses","howServe"].forEach(function(id){ document.getElementById(id).style.display = state.setup ? "none" : ""; });
+    ["howHead","howHint","howDoses","howDays","howServe"].forEach(function(id){ document.getElementById(id).style.display = state.setup ? "none" : ""; });
     document.getElementById("setupHint").innerHTML = state.setup ? "" : "A minute of setup: who's here, which strains you keep, and you're planning. New here? <a href=\"https://joshdprog-spec.github.io/kratom-planner/\">What this does, and why</a>.";
     var ppl = document.getElementById("setupPeople"); ppl.innerHTML = "";
     var wrap = document.createElement("div"); wrap.className = "people";
@@ -2039,19 +2078,22 @@
     var ordinary = state.myStrains.filter(function(k){ return !S[k].reserve; }).length;
     if (ordinary < 3){ alert("Switch on at least three ordinary strains (reserves don't count) so a week can rotate without repeats."); return; }
     if (!state.setup){
-      var three = document.querySelector('input[name="howLate"]:checked').value === "1";
+      var doses = +document.querySelector('input[name="howLate"]:checked').value;
+      var days = [].map.call(document.querySelectorAll("#howDays input"), function(c){ return c.checked; });
+      if (!days.some(Boolean)){ alert("Tick at least one day you take it."); return; }
       var d = parseFloat(document.getElementById("howDay").value), n = parseFloat(document.getElementById("howNight").value), l = parseFloat(document.getElementById("howLateN").value);
-      if (!(d > 0) || !(n > 0) || (three && !(l > 0))){ alert("Enter how many capsules you take for each dose. Half capsules are fine; if you use powder, 1 g counts as 2 capsules."); return; }
+      if (!(d > 0) || (doses >= 2 && !(n > 0)) || (doses === 3 && !(l > 0))){ alert("Enter how many capsules you take for each dose. Half capsules are fine; if you use powder, 1 g counts as 2 capsules."); return; }
       var half = function(x){ return Math.min(12, Math.max(0.5, Math.round(x * 2) / 2)); };
-      var p0 = P(); p0.hasLate = three;
-      p0.serve = { day: half(d), night: half(n), late: three ? half(l) : half(Math.min(d, n)), brk: half(Math.min(d, n) * 2 / 3) };
+      var p0 = P(); p0.doses = doses; p0.hasLate = doses === 3; p0.days = days;
+      var nn = doses >= 2 ? n : d;
+      p0.serve = { day: half(d), night: half(nn), late: doses === 3 ? half(l) : half(Math.min(d, nn)), brk: half(Math.min(d, nn) * 2 / 3) };
       syncControls();
     }
     state.setup = true; settingsOpen = false; saveState(); renderSettings(); renderAll();
     if (!P().week){ var ctl = document.querySelector('details[data-more="ctl"]'); ctl.open = true; ctl.scrollIntoView({ behavior: "smooth", block: "start" }); }
   });
   [].forEach.call(document.querySelectorAll('input[name="howLate"]'), function(r){
-    r.addEventListener("change", function(){ document.getElementById("howLateWrap").style.display = document.querySelector('input[name="howLate"]:checked').value === "1" ? "" : "none"; });
+    r.addEventListener("change", function(){ var v = +document.querySelector('input[name="howLate"]:checked').value; document.getElementById("howNightWrap").style.display = v >= 2 ? "" : "none"; document.getElementById("howLateWrap").style.display = v === 3 ? "" : "none"; });
   });
   document.getElementById("setupPeople").addEventListener("click", function(e){
     var el = e.target;
@@ -2137,7 +2179,7 @@
   function weekSig(w){ return JSON.stringify(w); }
   function snapshotOf(p, name){
     return { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), weekId: p.weekId, name: name, week: JSON.parse(JSON.stringify(p.week)),
-             v: p.v, hasLate: p.hasLate, sigCount: p.sigCount, breakWeek: !!p.breakWeek, stamp: p.weekStamp || "", savedAt: todayKey() };
+             v: p.v, hasLate: p.hasLate, doses: p.doses, days: p.days.slice(), sigCount: p.sigCount, breakWeek: !!p.breakWeek, stamp: p.weekStamp || "", savedAt: todayKey() };
   }
   // keep the current week unless an identical one is already saved
   function autoKeep(p, label){
@@ -2172,7 +2214,7 @@
       var rating = r ? '<span class="rate">' + (r.buzz !== null ? "buzz " + r.buzz.toFixed(1) : "") + (r.sleep !== null ? (r.buzz !== null ? " \u00b7 " : "") + "sleep " + r.sleep.toFixed(1) : "") + " (" + r.nights + " night" + (r.nights > 1 ? "s" : "") + ")</span>" : '<span class="rate dim">not rated yet</span>';
       div.innerHTML = '<span class="sd">' + x.savedAt + '</span><b>' + (x.name || "Untitled").replace(/</g,"&lt;") + '</b>' +
         (best && best.id === x.id ? '<span class="cur best">\u2605 best</span>' : "") +
-        '<span>' + pos + (x.breakWeek ? " \u00b7 break week" : "") + (x.hasLate && !x.breakWeek ? "" : " \u00b7 two-dose") + '</span>' + rating +
+        '<span>' + pos + (x.breakWeek ? " \u00b7 break week" : "") + " \u00b7 " + dosesText({ doses: x.doses || (x.hasLate ? 3 : 2), days: x.days || ALL_DAYS, breakWeek: x.breakWeek, hasLate: x.hasLate }) + '</span>' + rating +
         (weekSig(x.week) === curSig ? '<span class="cur">current</span>' : '<button data-act="use" data-id="' + x.id + '">Use</button>') +
         '<button data-act="pdf" data-id="' + x.id + '">PDF</button>' +
         '<button class="del" data-act="del" data-id="' + x.id + '" title="remove">\u2715</button>';
@@ -2201,14 +2243,14 @@
     if (act === "pdf"){
       if (!(window.jspdf && window.jspdf.jsPDF)){ alert("The PDF library didn't load (offline?)."); return; }
       var iso = new Date().toISOString().slice(0,10);
-      buildPDF(window.jspdf.jsPDF, { week: x.week, hasLate: x.hasLate, breakWeek: x.breakWeek, v: x.v, name: p.name, serve: p.serve }).save("Kratom Week " + iso + " " + p.name + " (" + (x.name || "saved") + ").pdf");
+      buildPDF(window.jspdf.jsPDF, { week: x.week, hasLate: x.hasLate, doses: x.doses || (x.hasLate ? 3 : 2), days: x.days || ALL_DAYS, breakWeek: x.breakWeek, v: x.v, name: p.name, serve: p.serve }).save("Kratom Week " + iso + " " + p.name + " (" + (x.name || "saved") + ").pdf");
       return;
     }
     if (act === "use"){
       autoKeep(p, "Replaced " + todayKey());
       p.week = JSON.parse(JSON.stringify(x.week));
       p.weekId = x.weekId || ("w" + Date.now().toString(36));
-      p.v = x.v; p.hasLate = x.hasLate; p.sigCount = x.sigCount; p.breakWeek = x.breakWeek;
+      p.v = x.v; p.hasLate = x.hasLate; p.doses = x.doses || (x.hasLate ? 3 : 2); p.days = x.days ? x.days.slice() : ALL_DAYS.slice(); p.sigCount = x.sigCount; p.breakWeek = x.breakWeek;
       p.weekStamp = (x.stamp || x.savedAt) + " (restored)";
       p.checks = {};
       saveState(); syncControls(); renderAll();
@@ -2220,15 +2262,17 @@
     var p = P();
     autoKeep(p, "Replaced " + todayKey());
     p.v = +slider.value;
-    p.hasLate = document.getElementById("threeDose").checked;
+    p.doses = +document.getElementById("doses").value; p.hasLate = p.doses === 3;
+    p.days = [].map.call(document.querySelectorAll("#dayPick input"), function(c){ return c.checked; });
+    if (!p.days.some(Boolean)){ alert("Tick at least one day you take it."); return; }
     p.sigCount = +document.getElementById("sigCount").value;
     p.breakWeek = document.getElementById("breakWeek").checked;
     var seed = Date.now() & 0x7fffffff;
-    var w = generate(p.v, p.hasLate, p.sigCount, seed, p.breakWeek);
-    if (!w && p.hasLate){
-      // too few strains for three distinct doses a day: fall back to two-dose days
-      w = generate(p.v, false, p.sigCount, seed, p.breakWeek);
-      if (w){ p.hasLate = false; document.getElementById("threeDose").checked = false; alert("Not enough strains switched on for a Late column, so this is a two-dose week. Switch on more strains in Settings to get Late back."); }
+    var w = generate(p.v, p.hasLate, p.sigCount, seed, p.breakWeek, p.doses, p.days);
+    if (!w && p.doses === 3){
+      // too few strains for three distinct doses a day: fall back to two
+      w = generate(p.v, false, p.sigCount, seed, p.breakWeek, 2, p.days);
+      if (w){ p.doses = 2; p.hasLate = false; document.getElementById("doses").value = 2; alert("Not enough strains switched on for a Late dose, so this is a two-dose week. Switch on more strains in Settings to get Late back."); }
     }
     if (!w){ alert("Couldn't build a valid week from the strains you have switched on. Switch on a couple more in Settings, or nudge the slider."); return; }
     p.week = w;
@@ -2245,7 +2289,8 @@
   function plain(html){ var t = document.createElement("div"); t.innerHTML = html; return t.textContent; }
 
   function buildPDF(jsPDF, p){
-    var w = p.week, hasLate = effLate(p), v = p.v, sv = p.serve || P().serve || SERVING;
+    var w = p.week, hasLate = effLate(p), v = p.v, sv = p.serve || P().serve || SERVING, doses = dosesOf(p);
+    if (doses < 3) hasLate = false;
     var doc = new jsPDF({unit:"pt", format:"letter"});
     var W = 612, M = 40, X0 = M, X1 = W - M, y = 64;
     var C = {ink:[43,43,40], green:[31,61,43], gray:[108,108,102], light:[246,244,238],
@@ -2279,7 +2324,7 @@
     });
     y += 14;
 
-    var cols = hasLate ? 3 : 2;
+    var cols = doses;
     var dayW = 84, colW = (X1 - X0 - dayW) / cols;
     var headH = 24, rowH = 38, tableTop = y;
     var tableH = headH + rowH * 7;
@@ -2289,7 +2334,7 @@
     doc.roundedRect(X0, tableTop, X1 - X0, headH, 6, 6, "F");
     doc.rect(X0, tableTop + headH/2, X1 - X0, headH/2, "F");
     font("bold", 7.5, [245,242,233]);
-    var heads = ["DAY","DAY","NIGHT"].concat(hasLate ? ["LATE (ONLY IF NEEDED)"] : []);
+    var heads = ["DAY","DAY"].concat(doses >= 2 ? ["NIGHT"] : []).concat(hasLate ? ["LATE (ONLY IF NEEDED)"] : []);
     heads.forEach(function(h, i){ doc.text(h, X0 + 12 + (i === 0 ? 0 : dayW + colW*(i-1)), tableTop + 15); });
     y = tableTop + headH;
 
@@ -2324,8 +2369,9 @@
       stroke([230,230,226]); doc.line(X0 + 1, top, X1 - 1, top);
       font("bold", 9.5, C.green);
       doc.text(DAYS[d].toUpperCase(), X0 + 12, top + 20);
+      if (!w[d]){ font("italic", 8, C.gray); doc.text("off day", X0 + dayW + 12, top + 20); continue; }
       cell(X0 + dayW + 12, top, w[d].day, "DAY");
-      cell(X0 + dayW + colW + 12, top, w[d].night, "NGT");
+      if (doses >= 2) cell(X0 + dayW + colW + 12, top, w[d].night, "NGT");
       if (hasLate) cell(X0 + dayW + colW*2 + 12, top, w[d].late, "LATE");
     }
     stroke(C.line); doc.roundedRect(X0, tableTop, X1 - X0, tableH, 6, 6, "S");
@@ -2358,7 +2404,7 @@
     var rules = [
       p.breakWeek
         ? ["Break week:", capsText(sv.brk) + " a serving, Day and Night only, no Signature Reserve. Every dose at least 6 hrs from the last. The point is to let tolerance reset \u2014 don't top up."]
-        : ["Servings:", serveText({ serve: sv, hasLate: hasLate, breakWeek: false }) + " \u00b7 every dose at least 6 hrs from the last."],
+        : ["Servings:", serveText({ serve: sv, hasLate: hasLate, doses: doses, breakWeek: false }) + " \u00b7 every dose at least 6 hrs from the last."],
       ["Standing items:", "extracts, gummies and kava are dosed by serving, not by strain, so they never rotate. Never stack full servings of two things at once."],
       ["Guarantees:", "the reserve strain exactly as many days as selected, never back to back \u00b7 no strain on consecutive days in the same column \u00b7 no red repeats within 24 hrs in any direction \u00b7 nothing twice in one day."],
       ["If effects feel dulled:", "regenerate toward the other end of the spectrum or take a break day \u2014 never dose up."]

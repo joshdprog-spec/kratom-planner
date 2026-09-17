@@ -182,7 +182,7 @@
 <header class="hero" id="top"><div class="wrap">
   <div class="eyebrow">Free &middot; for Super Speciosa customers &middot; no account</div>
   <h1>Plan the week. Take it.<br><em>Restock</em> at the best price.</h1>
-  <p class="sub">Say how the week should feel and it lays out your day and night doses, and a late one if you take it, across your strains so nothing repeats back to back. From that schedule it counts your shelf down, names the day to order, and prices every size, subscription and sale.</p>
+  <p class="sub">Say how the week should feel and it lays out your doses, on the days you take them, across your strains so nothing repeats back to back. From that schedule it counts your shelf down, names the day to order, and prices every size, subscription and sale.</p>
   <div class="cta">
     <a class="btn primary" href="Weekly%20Kratom%20Planner.html">Open the planner</a>
     <a class="btn ghost" href="#rotation">See how it works</a>
@@ -229,7 +229,7 @@
         <li><b>No strain in the same slot two days running</b>, and nothing twice in one day.</li>
         <li><b>No red repeated within 24 hours</b> in either direction, night to late or late to the next night.</li>
         <li><b>The reserve strain exactly as often as you choose</b>, once or twice a week, never on neighbouring days.</li>
-        <li><b>Late is optional.</b> Untick it for two-dose days and the rules still hold.</li>
+        <li><b>Your days, your doses.</b> One, two or three doses on the days you take it, every day or just some. The rotation runs across your dose days only, and off days are off.</li>
         <li><b>Servings are yours.</b> Capsules per dose for day, night, late and break weeks, set per person. The shelf count and the buying math follow them.</li>
         <li><b>A break week</b> drops to smaller servings, greens by day and reds by night, with no reserve strain. If effects feel dulled, that or a nudge of the slider is the move, never a bigger dose.</li>
       </ul>
@@ -295,6 +295,7 @@
   <details class="q"><summary>Where is my data?</summary><div class="a"><p>In your browser's local storage, on your device. Nothing is uploaded; there is no server to upload to. That also means each browser has its own copy: to move to another phone or PC, open Settings, save a backup file, and restore it on the other device. Clearing your browser's site data erases the planner, so keep a backup.</p></div></details>
   <details class="q"><summary>How does it know what I have left?</summary><div class="a"><p>You enter what's on the shelf once, by container and how full it is. From then on, each completed day takes the scheduled doses off: capsules or tablets for doses on the go, powder first for doses at home. Logged orders are added on their arrival date. Overwrite any number whenever a container looks different from the estimate.</p></div></details>
   <details class="q"><summary>What are the serving sizes it assumes?</summary><div class="a"><p>None. On first run it asks whether you take two doses a day or three, and how many capsules each dose is, and it does not fill those in for you. Every person in the planner has their own numbers, changeable any time under the week's slider. Stock burn, the reorder date, the buying math and the printed sheet all follow them. One capsule is 500 mg of leaf; 1 g of powder counts as two capsules and a 300 mg tablet as 0.6, so all forms of a strain share one stock count.</p></div></details>
+  <details class="q"><summary>I only take it a few times a week. Is this for me?</summary><div class="a"><p>Yes. On first run you tick the days you take it and say how many doses you take on those days, one to three. The week shows the other days as off, nothing comes off the shelf on them, and the buying math is based on what you actually take. The rotation runs across your dose days, so a strain you had on one dose day won't come back in the same slot on the next one.</p></div></details>
   <details class="q"><summary>Can more than one person use it?</summary><div class="a"><p>Yes. Add people in Settings. Each person gets their own week, journal and saved weeks; the shelf and the orders are shared, since the household buys together.</p></div></details>
   <details class="q"><summary>Can I print it?</summary><div class="a"><p>Yes. Export PDF gives a one-page sheet of the week with the rules and any standing items, and Print does the same through the browser.</p></div></details>
   <details class="q"><summary>Do the prices stay current?</summary><div class="a"><p>Yes. The catalog, subscription prices and deal calendar are refreshed from the store every morning, and the planner also checks live prices when you open it. The date of the last refresh is shown on the Stock &amp; orders tab.</p></div></details>
@@ -375,7 +376,7 @@
     '<div class="t"><div class="n">' + money(listMo) + '</div><div class="l">a month, buying as you go</div><div class="s">' + caps + ' capsules a day, smallest bottles at list price</div></div>' +
     '<div class="t win"><div class="n">' + money(bestMo) + '</div><div class="l">a month, the planner’s way</div><div class="s">the same ' + caps + ' capsules a day, bought the way it suggests</div></div>' +
     '<div class="t"><div class="n">' + money(save * 12) + '</div><div class="l">back in your pocket a year</div><div class="s"><b>' + Math.round(save / listMo * 100) + '% less</b> for the same product, before any sale</div></div>';
-  if (SNAP.fetchedAt) asof.textContent = "Computed from the store’s catalog as of " + new Date(SNAP.fetchedAt).toLocaleDateString() + ". Your own figure depends on your strains and how you buy.";
+  if (SNAP.fetchedAt) asof.textContent = "Computed from the store’s catalog as of " + new Date(SNAP.fetchedAt).toLocaleDateString() + ", for someone taking it every day. Your own figure depends on how often you take it, your strains and how you buy.";
 })();
 </script>
 </body>
