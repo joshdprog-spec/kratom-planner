@@ -175,6 +175,7 @@
     font-size: 10.5px; color: var(--cream-dim); line-height: 1.5;
   }
   .standing b { color: var(--cream); }
+  .standing input { width: 40px; font-family: inherit; font-size: 10.5px; background: #16301f; color: #f2ecdd; border: 1px solid #2c4a35; border-radius: 6px; padding: 2px 5px; text-align: right; margin: 0 2px; }
   .standing.taken .pill, .standing.taken b { opacity: 0.55; }
 
   .chk {
@@ -452,13 +453,13 @@
       </table></div>
       <div class="standing" id="standing">
         <span class="chk" id="kavaChk" title="took a kava gummy tonight">&#10003;</span>
-        <span class="pill py">KAVA</span><b>Standing evening option, any night:</b> 1&ndash;2 kava gummies as wanted. No rotation needed. Take it instead of that night's Late red, or alongside a smaller one. Not before driving; skip when drinking. Tap the circle when you take one.
+        <span class="pill py">KAVA</span><b>Nightly:</b> <input type="number" id="kavaNightly" min="0" max="5" step="1"> gummies a night, assumed taken and burned from stock like everything else. No rotation needed. Take it instead of that night's Late red, or alongside a smaller one. Not before driving; skip when drinking. Tap the circle to note it in the journal.
       </div>
       <div class="rules">
         <b>Servings:</b> 3 caps Day &middot; 3 caps Night &middot; 2&ndash;3 caps Late (only if needed) &middot; every dose &ge;6 hrs from the last. 1 cap = 500 mg, so 3 caps &asymp; 1.5 g powder &mdash; capsules and powder of a strain share one stock.
         <b>Kava Gummy:</b> 1 gummy = 50mg kavalactones. Calm only, no energy side. Nightly use is fine and it doesn't rotate &mdash; regular use strengthens it. Kava amplifies kratom, so never stack full servings of both. Label max 5/day; keep to 1&ndash;2 on kratom days.
         <b>Guarantees:</b> Signature Reserve exactly as many days as selected, never back to back &middot; no strain on consecutive days in the same column &middot; no red repeats within 24 hrs in any direction &middot; nothing twice in one day.
-        <b>Check-offs:</b> tap the circle on a dose when you take it &mdash; it feeds the journal. Inventory assumes the schedule is followed and burns down on its own; kava burns from its check-off.
+        <b>Check-offs:</b> tap the circle on a dose when you take it &mdash; it feeds the journal. Inventory assumes the schedule is followed and burns down on its own, kava included at its nightly setting.
         <b>If effects feel dulled:</b> regenerate toward the other end of the spectrum or take a break day &mdash; never dose up.
       </div>
     </div>
@@ -497,7 +498,7 @@
       <div class="hint" id="invHint"></div>
       <div class="invsub">Estimate on hand</div>
       <div class="invgrid" id="invGrid"></div>
-      <div class="invnote">Add each bottle or bag above and the app keeps this estimate: it burns down every day from the schedule (kava from its check-off), and orders you log arrive after the lead time. The numbers are capsules (kava: gummies); 1 cap = 0.5 g, so powder shows in grams too. Overwrite a number any time a bottle looks different.</div>
+      <div class="invnote">Add each bottle or bag above and the app keeps this estimate: it burns down every day from the schedule, kava at its nightly setting, and orders you log arrive after the lead time. The numbers are capsules (kava: gummies); 1 cap = 0.5 g, so powder shows in grams too. Overwrite a number any time a bottle looks different.</div>
     </div>
 
     <div class="panel orders" id="ordPanel">
@@ -618,6 +619,7 @@
   function normalize(st){
     if (!st.orders) st.orders = [];
     if (!st.tracked) st.tracked = {};
+    if (st.kavaNightly === undefined) st.kavaNightly = 1;
     // anything with stock, or ever ordered, counts as tracked
     Object.keys(st.inventory || {}).forEach(function(k){ if (st.inventory[k] > 0) st.tracked[k] = true; });
     st.orders.forEach(function(o){ st.tracked[o.key] = true; });
@@ -890,6 +892,7 @@
         (hasLate ? cell(p.week[d].late, "LATE", "late") : "");
       tb.appendChild(tr);
     }
+    document.getElementById("kavaNightly").value = state.kavaNightly;
     var kavaOn = !!((p.checks[todayIdx] || {}).kava);
     document.getElementById("kavaChk").className = "chk" + (kavaOn ? " on" : "");
     document.getElementById("standing").className = "standing" + (kavaOn ? " taken" : "");
@@ -913,24 +916,19 @@
     renderWeek();
   });
 
+  document.getElementById("kavaNightly").addEventListener("change", function(){
+    state.kavaNightly = Math.max(0, Math.min(5, parseInt(this.value || "0", 10)));
+    if (state.kavaNightly > 0) state.tracked.KAVA = true;
+    saveState();
+    renderInventory();
+  });
   document.getElementById("kavaChk").addEventListener("click", function(){
     var p = P();
     var d = new Date().getDay();
     if (!p.checks[d]) p.checks[d] = {};
-    if (state.inventory.KAVA === undefined) state.inventory.KAVA = 0;
-    state.tracked.KAVA = true;
-    var cur = p.checks[d].kava;
-    if (!cur){
-      var take = Math.min(1, state.inventory.KAVA);
-      state.inventory.KAVA -= take;
-      p.checks[d].kava = { on: true, took: take };
-    } else {
-      state.inventory.KAVA += (cur.took !== undefined) ? cur.took : 1;
-      delete p.checks[d].kava;
-    }
+    if (p.checks[d].kava) delete p.checks[d].kava; else p.checks[d].kava = { on: true };
     saveState();
     renderWeek();
-    renderInventory();
   });
 
   // ---------- inventory: automatic burn + arrivals ----------
@@ -950,6 +948,7 @@
       out[day.night] = (out[day.night] || 0) + (p.breakWeek ? 2 : SERVING.night);
       if (effLate(p) && day.late) out[day.late] = (out[day.late] || 0) + (p.breakWeek ? 2 : SERVING.late);
     });
+    if (state.kavaNightly > 0) out.KAVA = (out.KAVA || 0) + state.kavaNightly;
     return out;
   }
   function applyBurnAndArrivals(){
@@ -961,7 +960,6 @@
     while (d <= yesterday && guard++ < 400){
       var use = dailyServings(d);
       Object.keys(use).forEach(function(k){
-        if (k === "KAVA") return;
         state.inventory[k] = Math.max(0, (state.inventory[k] || 0) - use[k]);
       });
       state.burn.lastDate = d; changed = true;
@@ -1199,6 +1197,7 @@
         if (effLate(p) && d.late) use[d.late] = (use[d.late] || 0) + (p.breakWeek ? 2 : SERVING.late);
       });
     });
+    if (state.kavaNightly > 0) use.KAVA = state.kavaNightly * 7;
     return use;
   }
   function promosFor(handle){
@@ -1233,7 +1232,7 @@
       var inv = state.inventory[k] || 0;
       var incoming = incomingFor(k);
       var tracked = !!state.tracked[k];
-      var perDay = k === "KAVA" ? 1 : (use[k] || 0) / 7;
+      var perDay = (use[k] || 0) / 7;
       var days = tracked && perDay > 0 ? Math.floor(inv / perDay) : null;
       var daysWithIncoming = perDay > 0 ? Math.floor((inv + incoming) / perDay) : null;
       var row = document.createElement("div");
@@ -1579,8 +1578,8 @@
     y = tableTop + tableH + 12;
 
     // standing kava line (wrapped)
-    var standText = "1\u20132 kava gummies as wanted. No rotation needed. Instead of that night's Late red, or alongside a smaller one. Not before driving; skip when drinking.";
-    var standLead = "Standing evening option, any night:";
+    var standText = (state.kavaNightly > 0 ? state.kavaNightly + " gumm" + (state.kavaNightly > 1 ? "ies" : "y") + " a night. " : "As wanted. ") + "No rotation needed. Instead of that night's Late red, or alongside a smaller one. Not before driving; skip when drinking.";
+    var standLead = "Kava, nightly:";
     font("bold", 6.5, C.ink); var kp = doc.getTextWidth("KAVA") + 10;
     font("bold", 8.5, C.ink); var sw = doc.getTextWidth(standLead + " ");
     font("normal", 8.5, [68,68,68]);
