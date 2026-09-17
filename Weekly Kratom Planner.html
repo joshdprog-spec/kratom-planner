@@ -207,16 +207,25 @@
   .jhist .jstrains { font-size: 9.5px; color: var(--cream-dim); font-style: italic; margin-top: 1px; }
 
   /* inventory */
-  .invgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 14px; }
-  .invrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--cream); padding: 4px 0; }
-  .invrow .pair { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; color: var(--cream-dim); }
+  .invgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 4px 24px; }
+  .invrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--cream); padding: 5px 0; border-top: 1px solid rgba(44,74,53,0.5); }
+  .invrow > span:first-child { min-width: 120px; }
+  .invrow.quiet { color: var(--cream-dim); }
+  .hint { text-align: center; font-size: 11px; color: var(--cream-dim); line-height: 1.5; padding: 6px 10px 10px; }
+  .hint:empty { display: none; }
+  .invrow .pair { display: inline-flex; align-items: center; gap: 5px; font-size: 9.5px; color: var(--cream-dim); white-space: nowrap; flex-shrink: 0; }
+  .invrow .pair .pair { margin-left: 10px; }
+  .invrow .low { display: inline-block; }
   .invrow input {
-    width: 62px; text-align: right;
+    width: 72px; text-align: right; flex-shrink: 0;
+    -moz-appearance: textfield; appearance: textfield;
     font-family: inherit; font-size: 11px;
     background: #16301f; color: #f2ecdd;
     border: 1px solid #2c4a35; border-radius: 6px; padding: 4px 6px;
   }
-  .low { color: var(--red); font-size: 8.5px; font-weight: 700; letter-spacing: 1px; margin-left: 4px; }
+  .low { color: var(--red); font-size: 8.5px; font-weight: 700; letter-spacing: 1px; margin-left: 6px; }
+  input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
   .invnote { text-align: center; font-size: 9.5px; color: var(--cream-dim); margin-top: 10px; }
 
   /* supplier */
@@ -228,7 +237,8 @@
   }
   .dealtoday:empty { display: none; }
   .dealtoday b { color: var(--gold); }
-  .supgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px 16px; }
+  .supgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 4px 24px; }
+  .suprow.quiet .nm { color: var(--cream-dim); font-weight: 500; }
   .suprow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--cream); padding: 5px 0; border-top: 1px solid rgba(44,74,53,0.5); flex-wrap: wrap; }
   .suprow .nm { font-weight: 600; }
   .suprow .meta { color: var(--cream-dim); font-size: 10px; }
@@ -316,9 +326,10 @@
     .standing { font-size: 10px; }
     .jrow { gap: 8px; }
     .noteinput { width: 100%; }
-    .invgrid { grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+    .invgrid { grid-template-columns: 1fr; gap: 2px 10px; }
     .invrow { font-size: 10.5px; }
-    .invrow input { width: 54px; }
+    .invrow input { width: 64px; }
+    .invrow > span:first-child { min-width: 96px; }
     .supgrid { grid-template-columns: 1fr; }
     .fact { font-size: 13px; }
   }
@@ -463,6 +474,7 @@
 
     <div class="panel inventory" id="invPanel">
       <h2>Inventory &mdash; shared, in capsules / gummies</h2>
+      <div class="hint" id="invHint"></div>
       <div class="invgrid" id="invGrid"></div>
       <div class="invnote">Estimated stock on hand, in capsules or grams (1 cap = 0.5 g; either box updates the other). Burns down every day from the schedule (kava from its check-off). Orders you log below arrive after the lead time. Edit any number to correct it.</div>
     </div>
@@ -584,6 +596,10 @@
   // any week generated when kava was still a rotation slot
   function normalize(st){
     if (!st.orders) st.orders = [];
+    if (!st.tracked) st.tracked = {};
+    // anything with stock, or ever ordered, counts as tracked
+    Object.keys(st.inventory || {}).forEach(function(k){ if (st.inventory[k] > 0) st.tracked[k] = true; });
+    st.orders.forEach(function(o){ st.tracked[o.key] = true; });
     if (!st.burn) st.burn = { lastDate: todayKey() };
     if (!st.leadDays && st.leadDays !== 0) st.leadDays = 7;
     Object.keys(st.profiles).forEach(function(id){
@@ -881,6 +897,7 @@
     var d = new Date().getDay();
     if (!p.checks[d]) p.checks[d] = {};
     if (state.inventory.KAVA === undefined) state.inventory.KAVA = 0;
+    state.tracked.KAVA = true;
     var cur = p.checks[d].kava;
     if (!cur){
       var take = Math.min(1, state.inventory.KAVA);
@@ -953,15 +970,19 @@
     ORDER.forEach(function(k){
       var count = state.inventory[k] || 0;
       var lowAt = k === "KAVA" ? LOW_AT.KAVA : LOW_AT.default;
+      var tracked = !!state.tracked[k];
       var row = document.createElement("div");
-      row.className = "invrow";
+      row.className = "invrow" + (tracked ? "" : " quiet");
       var inputs = '<span class="pair"><input type="number" min="0" step="1" value="' + count + '" data-key="' + k + '" data-unit="caps"> ' + (k === "KAVA" ? 'gummies' : 'caps') + '</span>';
       if (k !== "KAVA") inputs += '<span class="pair"><input type="number" min="0" step="0.5" value="' + (count / 2) + '" data-key="' + k + '" data-unit="g"> g</span>';
       row.innerHTML = '<span>' + S[k].name.replace(" (1)","") +
-        (count > 0 && count < lowAt ? '<span class="low">LOW</span>' : '') +
+        (tracked && count < lowAt && !incomingFor(k) ? '<span class="low">LOW</span>' : '') +
         '</span><span class="pair">' + inputs + '</span>';
       g.appendChild(row);
     });
+    var anyTracked = ORDER.some(function(k){ return state.tracked[k]; });
+    document.getElementById("invHint").textContent = anyTracked ? "" :
+      "Start by entering what's on the shelf: bottles in capsules, bags in grams. Strains you leave at zero stay quiet until you stock them.";
     renderSupplier();
   }
   document.getElementById("supGrid").addEventListener("click", function(e){
@@ -974,6 +995,7 @@
     var k = el.getAttribute("data-key");
     var raw = Math.max(0, parseFloat(el.value || "0") || 0);
     state.inventory[k] = el.getAttribute("data-unit") === "g" ? Math.round(raw * 2) : Math.round(raw);
+    state.tracked[k] = true;
     saveState();
     renderInventory();
   });
@@ -1161,11 +1183,12 @@
       var pr = products[k];
       var inv = state.inventory[k] || 0;
       var incoming = incomingFor(k);
+      var tracked = !!state.tracked[k];
       var perDay = k === "KAVA" ? 1 : (use[k] || 0) / 7;
-      var days = perDay > 0 ? Math.floor(inv / perDay) : null;
+      var days = tracked && perDay > 0 ? Math.floor(inv / perDay) : null;
       var daysWithIncoming = perDay > 0 ? Math.floor((inv + incoming) / perDay) : null;
       var row = document.createElement("div");
-      row.className = "suprow";
+      row.className = "suprow" + (tracked ? "" : " quiet");
       var left = '<span><span class="nm">' + S[k].name + '</span>';
       var promos = promosFor(SUPPLIER[k]);
       var active = promos.filter(function(pm){ return promoState(pm) === "active"; })[0];
@@ -1329,6 +1352,7 @@
     var date = document.getElementById("ordDate").value || todayKey();
     if (!key || !sz) return;
     state.orders.push({ id: Date.now().toString(36), date: date, key: key, size: sz.count, label: sz.label, form: sz.form, qty: qty, paid: paid, applied: false });
+    state.tracked[key] = true;
     state.orders.sort(function(a,b){ return a.date < b.date ? -1 : 1; });
     applyBurnAndArrivals();
     saveState();
