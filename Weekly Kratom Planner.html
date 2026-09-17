@@ -2239,15 +2239,21 @@
       doc.text(tag, x + 5, base - 1);
       return pw;
     }
+    function fitText(t, maxW){   // trim words and add an ellipsis so text never runs into the next column
+      if (doc.getTextWidth(t) <= maxW) return t;
+      var s = t;
+      while (s && doc.getTextWidth(s + "\u2026") > maxW) s = /\s/.test(s) ? s.replace(/\s*\S+$/, "") : s.slice(0, -1);
+      return s + "\u2026";
+    }
     function cell(x, top, key, tag){
       var st = S[key];
       var cls = st.color === "g" ? "pg" : st.color === "r" ? "pr" : st.color === "y" ? "py" : "pw";
-      var base = top + 16;
+      var base = top + 16, maxW = colW - 20;
       var pw = pill(x, base, tag, cls);
       font("bold", 10.5, C.ink);
-      doc.text(st.name, x + pw + 7, base);
+      doc.text(fitText(st.name, maxW - pw - 7), x + pw + 7, base);
       font("italic", 7.5, C.gray);
-      doc.text(st.desc, x, base + 12);
+      doc.text(fitText(st.desc, maxW), x, base + 12);
     }
     for (var d = 0; d < 7; d++){
       var top = y + rowH * d;
