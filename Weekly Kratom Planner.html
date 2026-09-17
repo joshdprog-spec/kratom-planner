@@ -366,6 +366,23 @@
   .subs b { color: var(--cream); }
   .subs .yes { color: #9fd3a6; }
   .subs .no { color: var(--cream-dim); }
+  .gist { display: flex; gap: 6px 10px; justify-content: center; flex-wrap: wrap; font-size: 11px; color: var(--cream-dim); margin: 0 0 10px; line-height: 1.6; }
+  .gist .chip { display: inline-flex; align-items: baseline; gap: 5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: rgba(0,0,0,0.15); color: var(--cream); font-size: 10.5px; }
+  .gist .chip .d { color: #9fd3a6; font-size: 9.5px; }
+  .gist .chip .d.short { color: #f0a08e; }
+  .gist .chip .d.mid { color: #d9c34a; }
+  .gist .chip.out { color: var(--cream-dim); }
+  .gist .line { width: 100%; text-align: center; }
+  details.more { margin-top: 6px; }
+  details.more > summary {
+    cursor: pointer; list-style: none; text-align: center;
+    font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold-soft);
+    padding: 8px 0 4px; border-top: 1px dashed rgba(44,74,53,0.8);
+  }
+  details.more > summary::-webkit-details-marker { display: none; }
+  details.more > summary::before { content: "\25B8 "; }
+  details.more[open] > summary::before { content: "\25BE "; }
+  details.more > summary:hover { color: var(--gold); }
   .tally { display: flex; gap: 10px 28px; justify-content: center; flex-wrap: wrap; margin: 4px 0 14px; }
   .tally .t { text-align: center; }
   .tally .n { font-family: Georgia, serif; font-size: 22px; color: var(--gold); line-height: 1.1; }
@@ -571,6 +588,8 @@
 
     <div class="panel inventory" id="invPanel" data-view="stock">
       <h2>Inventory &mdash; what's on the shelf</h2>
+      <div class="gist" id="invGist"></div>
+      <details class="more" data-more="inv"><summary>Add stock, settings, full list</summary>
       <div class="placerow">
         <span>Where doses happen:</span>
         <label>Day <select id="placeDay"><option value="away">on the go</option><option value="home">at home</option></select></label>
@@ -605,11 +624,14 @@
       <div class="invsub">Estimate on hand</div>
       <div class="invgrid" id="invGrid"></div>
       <div class="invnote">Each strain is tracked per form: capsules, powder (grams) and tablets. One serving is 3 capsules, 1.5 g of powder or 5 tablets (300 mg each). On-the-go doses burn capsules or tablets; at-home doses burn powder first. Orders you log arrive after the lead time. Overwrite a number any time a container looks different.</div>
+      </details>
     </div>
 
     <div class="panel orders" id="ordPanel" data-view="stock">
       <h2>Orders</h2>
       <div class="tally" id="costTally"></div>
+      <div class="gist" id="ordGist"></div>
+      <details class="more" data-more="ord"><summary>Log an order, history, buying math</summary>
       <div class="hint">Nothing is recorded here on its own. After you place an order with the supplier, log it so the stock is counted when it arrives.</div>
       <div class="orow" id="ordOpenRow"><button class="savebtn" id="ordOpen">+ Log an order</button></div>
       <div id="ordForm" style="display:none">
@@ -626,14 +648,18 @@
       <div class="leadrow">Orders take about <input type="number" id="leadDays" min="0" max="30" step="1"> days to arrive. Stock is counted on arrival.</div>
       <div class="olist" id="ordList"></div>
       <div class="subs" id="subsBox"></div>
+      </details>
     </div>
 
     <div class="panel supplier" id="supPanel" data-view="stock">
       <h2>Supplier &mdash; Super Speciosa</h2>
       <div class="dealtoday" id="dealToday"></div>
+      <div class="gist" id="supGist"></div>
+      <details class="more" data-more="sup"><summary>Every strain, prices, deal calendar</summary>
       <div class="supgrid" id="supGrid"></div>
       <div class="supdeals" id="supDeals"></div>
       <div class="supfoot"><span id="supStamp"></span><button id="supRefresh">Refresh prices</button></div>
+      </details>
     </div>
 
     <div class="panel facts" data-view="week">
@@ -1577,6 +1603,7 @@
     if (SNAP && SNAP.fetchedAt) parts.push("deals as of " + new Date(SNAP.fetchedAt).toLocaleDateString());
     stamp.textContent = parts.join(" \u00b7 ");
     renderSubs();
+    renderGists(use);
   }
   // ---------- buying model: one-time vs subscription ----------
   // Fallback plan list (the refresh script captures the live one per product).
@@ -1808,6 +1835,66 @@
     if (lines.length){ box.innerHTML = '<details><summary>What to buy, per strain (tap a strain for the math)</summary><div><div class="no" style="border:none;padding:4px 0 6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Picks follow your buying style. Real ties go to whichever asks for less up front, then to the lower yearly cost.</div>' + lines.join("") + '</div></details>'; }
   }
 
+  function renderGists(use){
+    // inventory: one chip per stocked strain with days left per pile
+    var ig = document.getElementById("invGist"); ig.innerHTML = "";
+    var chips = [], worst = null;
+    ORDER.forEach(function(k){
+      if (!state.tracked[k]) return;
+      var pools = stockPools(k, use);
+      var st = stockOf(k), total = (st.caps||0) + (st.powder||0) + (st.tabs||0);
+      if (!pools.length){
+        chips.push('<span class="chip' + (total ? "" : " out") + '">' + S[k].name + ' <span class="d">' + (total ? Math.round(total) + (k === "KAVA" ? " gummies" : " caps-worth") + ", not in this week's plan" : "none") + '</span></span>');
+        return;
+      }
+      var ds = pools.map(function(pool){
+        var d = Math.floor(pool.stock / pool.perDay);
+        if (worst === null || d < worst.d) worst = { k: k, d: d };
+        var cls = d < LEAD_BUFFER() ? "short" : d < LEAD_BUFFER() * 2 ? "mid" : "";
+        return '<span class="d ' + cls + '">' + (pool.label && pools.length > 1 ? pool.label + " " : "") + "~" + d + "d</span>";
+      }).join("");
+      chips.push('<span class="chip">' + S[k].name + ' ' + ds + '</span>');
+    });
+    if (!chips.length) ig.innerHTML = '<span class="line">Nothing stocked yet. Open the fold below and add what is on the shelf.</span>';
+    else ig.innerHTML = chips.join("") + (worst ? '<span class="line">Tightest: <b>' + S[worst.k].name + '</b> at about ' + worst.d + ' days. Reorder line is ' + LEAD_BUFFER() + ' days.</span>' : "");
+
+    // orders: status line
+    var og = document.getElementById("ordGist"); og.innerHTML = "";
+    var pending = state.orders.filter(function(o){ return !o.applied; });
+    var last = state.orders.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; })[0];
+    var parts = [];
+    parts.push(state.orders.length ? state.orders.length + " order" + (state.orders.length > 1 ? "s" : "") + " on record, last on " + last.date : "No orders on record.");
+    if (pending.length) parts.push(pending.length + " on the way: " + pending.map(function(o){ return S[o.key].name + " (" + (o.label || o.size + "ct") + ") arrives " + addDays(o.date, state.leadDays); }).join(", ") + ".");
+    og.innerHTML = '<span class="line">' + parts.join(" ") + '</span>';
+
+    // supplier: next deals + price freshness
+    var sg = document.getElementById("supGist"); sg.innerHTML = "";
+    var lines = [];
+    var dt = document.getElementById("dealToday");
+    if (!dt.textContent.trim()) lines.push("Nothing needs ordering right now.");
+    if (SNAP && SNAP.promos){
+      var up = SNAP.promos.filter(function(pm){ return promoState(pm) !== "ended"; }).slice(0, 3).map(function(pm){
+        var st = promoState(pm);
+        var names = (pm.products || []).map(function(x){ var key = Object.keys(SUPPLIER).filter(function(k){ return SUPPLIER[k] === x.handle || powderHandle(k) === x.handle || tabletHandle(k) === x.handle; })[0]; return key ? S[key].name : null; }).filter(Boolean);
+        var uniq = names.filter(function(n, i){ return names.indexOf(n) === i; });
+        return (st === "active" ? "today" : shortDate(pm.startsAt)) + ": " + pm.percent + "% off " + (uniq.length ? uniq.join(", ") : pm.title.toLowerCase());
+      });
+      if (up.length) lines.push("Deals \u2014 " + up.join(" \u00b7 "));
+    }
+    var stamp = document.getElementById("supStamp").textContent;
+    if (stamp) lines.push(stamp.charAt(0).toUpperCase() + stamp.slice(1) + ".");
+    sg.innerHTML = lines.map(function(l){ return '<span class="line">' + l + '</span>'; }).join("");
+  }
+  // folds remember whether you left them open, per device
+  (function(){
+    var open = {};
+    try { open = JSON.parse(localStorage.getItem("kratomPlannerOpen") || "{}"); } catch(e){}
+    [].slice.call(document.querySelectorAll("details.more")).forEach(function(d){
+      var id = d.getAttribute("data-more");
+      if (open[id]) d.open = true;
+      d.addEventListener("toggle", function(){ open[id] = d.open; try { localStorage.setItem("kratomPlannerOpen", JSON.stringify(open)); } catch(e){} });
+    });
+  })();
   function renderTally(projectedYear, n, regularYear){
     var el = document.getElementById("costTally"); el.innerHTML = "";
     var parts = [];
