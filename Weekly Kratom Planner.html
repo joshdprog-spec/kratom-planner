@@ -2053,6 +2053,18 @@
 
   document.getElementById("supRefresh").addEventListener("click", fetchLivePrices);
   if (IN_ARTIFACT) document.getElementById("supRefresh").style.display = "none";   // no cross-site fetch inside claude.ai
+  if (IN_ARTIFACT) document.getElementById("printBtn").style.display = "none";    // the print dialog can't open inside claude.ai; Export PDF covers it
+  // hand a finished PDF to the viewer: a plain download outside claude.ai, the downloads capability inside it
+  function savePdf(doc, name){
+    if (!IN_ARTIFACT){ doc.save(name); return; }
+    window.claude.use("downloads").then(function(dl){
+      if (!dl){ alert("Downloads aren't available here. Open the planner on the website to save a PDF."); return; }
+      dl.save({ filename: name, data: doc.output("blob") }).catch(function(e){
+        if (e && e.code === "declined") return;
+        alert("Couldn't save the PDF here (" + (e && e.code ? e.code : "unknown") + ").");
+      });
+    });
+  }
 
   // ---------- theme ----------
   var themeBtn = document.getElementById("themeBtn");
@@ -2265,7 +2277,7 @@
     if (act === "pdf"){
       if (!(window.jspdf && window.jspdf.jsPDF)){ alert("The PDF library didn't load (offline?)."); return; }
       var iso = new Date().toISOString().slice(0,10);
-      buildPDF(window.jspdf.jsPDF, { week: x.week, hasLate: x.hasLate, doses: x.doses || (x.hasLate ? 3 : 2), days: x.days || ALL_DAYS, breakWeek: x.breakWeek, v: x.v, name: p.name, serve: p.serve }).save("Kratom Week " + iso + " " + p.name + " (" + (x.name || "saved") + ").pdf");
+      savePdf(buildPDF(window.jspdf.jsPDF, { week: x.week, hasLate: x.hasLate, doses: x.doses || (x.hasLate ? 3 : 2), days: x.days || ALL_DAYS, breakWeek: x.breakWeek, v: x.v, name: p.name, serve: p.serve }), "Kratom Week " + iso + " " + p.name + " (" + (x.name || "saved") + ").pdf");
       return;
     }
     if (act === "use"){
@@ -2474,7 +2486,7 @@
     }
     var pos = p.v <= 33 ? "work-heavy" : p.v <= 66 ? "balanced" : "unwind";
     var iso = new Date().toISOString().slice(0,10);
-    buildPDF(window.jspdf.jsPDF, p).save("Kratom Week " + iso + " " + p.name + " (" + pos + ").pdf");
+    savePdf(buildPDF(window.jspdf.jsPDF, p), "Kratom Week " + iso + " " + p.name + " (" + pos + ").pdf");
   });
 
   // ---------- facts ----------
