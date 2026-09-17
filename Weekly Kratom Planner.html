@@ -1453,6 +1453,7 @@
     else if (SNAP && SNAP.fetchedAt) parts.push("prices from snapshot " + new Date(SNAP.fetchedAt).toLocaleDateString());
     if (SNAP && SNAP.fetchedAt) parts.push("deals as of " + new Date(SNAP.fetchedAt).toLocaleDateString());
     stamp.textContent = parts.join(" \u00b7 ");
+    renderSubs();
   }
   // ---------- buying model: one-time vs subscription ----------
   // Fallback plan list (the refresh script captures the live one per product).
@@ -1604,21 +1605,7 @@
     applyBurnAndArrivals(); saveState(); renderOrders(); renderInventory();
   });
 
-  function renderOrders(){
-    fillOrderForm(null, null);
-    document.getElementById("leadDays").value = state.leadDays;
-    var L = document.getElementById("ordList"); L.innerHTML = "";
-    state.orders.slice().reverse().slice(0, 12).forEach(function(o){
-      var arrives = addDays(o.date, state.leadDays);
-      var div = document.createElement("div");
-      div.innerHTML = '<span class="od">' + o.date + '</span><b>' + S[o.key].name + '</b> ' + o.qty + ' \u00d7 ' + (o.label || (o.size + 'ct')) +
-        (o.paid ? ' \u00b7 $' + o.paid.toFixed(2) : '') +
-        (o.applied ? ' \u00b7 arrived' : ' \u00b7 arrives ' + arrives) +
-        '<span class="x" data-id="' + o.id + '" title="remove">\u2715</span>';
-      L.appendChild(div);
-    });
-    if (!state.orders.length) L.innerHTML = '<div>No orders on record.</div>';
-
+  function renderSubs(){
     // subscribe or buy? the price model per tracked strain, plus what your order history says
     var box = document.getElementById("subsBox"); box.innerHTML = "";
     var use = weeklyUsage();
@@ -1649,6 +1636,24 @@
       lines.push('<div>' + txt + '</div>');
     });
     if (lines.length){ box.innerHTML = '<h3>Subscribe or buy?</h3><div class="no" style="border:none;padding-bottom:6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Rule: cheapest per serving over a year of your actual use wins (stock you would not get through in a year counts as money tied up, not savings); within 5% of that, the lowest price today wins.</div>' + lines.join(""); }
+  }
+
+  function renderOrders(){
+    fillOrderForm(null, null);
+    document.getElementById("leadDays").value = state.leadDays;
+    var L = document.getElementById("ordList"); L.innerHTML = "";
+    state.orders.slice().reverse().slice(0, 12).forEach(function(o){
+      var arrives = addDays(o.date, state.leadDays);
+      var div = document.createElement("div");
+      div.innerHTML = '<span class="od">' + o.date + '</span><b>' + S[o.key].name + '</b> ' + o.qty + ' \u00d7 ' + (o.label || (o.size + 'ct')) +
+        (o.paid ? ' \u00b7 $' + o.paid.toFixed(2) : '') +
+        (o.applied ? ' \u00b7 arrived' : ' \u00b7 arrives ' + arrives) +
+        '<span class="x" data-id="' + o.id + '" title="remove">\u2715</span>';
+      L.appendChild(div);
+    });
+    if (!state.orders.length) L.innerHTML = '<div>No orders on record.</div>';
+
+    renderSubs();
   }
 
   document.getElementById("supRefresh").addEventListener("click", fetchLivePrices);
