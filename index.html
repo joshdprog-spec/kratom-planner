@@ -182,7 +182,7 @@
 <header class="hero" id="top"><div class="wrap">
   <div class="eyebrow">Free &middot; for Super Speciosa customers &middot; no account</div>
   <h1>Plan the week. Take it.<br><em>Restock</em> at the best price.</h1>
-  <p class="sub">Say how the week should feel and it lays out day, night and late doses across your strains so nothing repeats back to back. From that schedule it counts your shelf down, names the day to order, and prices every size, subscription and sale.</p>
+  <p class="sub">Say how the week should feel and it lays out your day and night doses, and a late one if you take it, across your strains so nothing repeats back to back. From that schedule it counts your shelf down, names the day to order, and prices every size, subscription and sale.</p>
   <div class="cta">
     <a class="btn primary" href="Weekly%20Kratom%20Planner.html">Open the planner</a>
     <a class="btn ghost" href="#rotation">See how it works</a>
@@ -263,7 +263,7 @@
   <h2>Because it knows your week, it knows your usage. So it can do the buying math.</h2>
   <div class="tally" id="money"></div>
   <div class="asof" id="asof"></div>
-  <p class="intro">The store's own prices make the case. A bottle bought at list price whenever you run out is the most expensive way to buy the exact same product; the same capsules on the right size and cadence cost a fraction. The figures above use the store's current catalog and a three-dose day of standard capsules.</p>
+  <p class="intro">The store's own prices make the case. A bottle bought at list price whenever you run out is the most expensive way to buy the exact same product; the same capsules on the right size and cadence cost a fraction. The figures above use the store's current catalog and two doses a day of standard capsules.</p>
   <p class="intro">Your own number depends on which strains you keep, how you split capsules and powder, and how you like to buy: least cash out over the next three months, least over a year, or best price per serving. The planner shows that figure on its Stock &amp; orders tab next to what you'd pay at list, and every suggestion links straight to the store's cart with the size and cadence already chosen. Nothing is ordered until you do it there.</p>
 </div></section>
 
@@ -294,7 +294,7 @@
   <details class="q"><summary>What happens when I click Add to cart or Subscribe?</summary><div class="a"><p>A new tab opens on superspeciosa.com with that exact size already in the cart, and the delivery cadence selected if it was a subscription pick. You check out there, on the store's own site, with the store's own checkout. The planner never sees your payment details and never places an order for you.</p><p>Afterwards, tap <b>log order</b> in the planner so the stock count knows something is on its way. That is a note to yourself; nothing is sent anywhere.</p></div></details>
   <details class="q"><summary>Where is my data?</summary><div class="a"><p>In your browser's local storage, on your device. Nothing is uploaded; there is no server to upload to. That also means each browser has its own copy: to move to another phone or PC, open Settings, save a backup file, and restore it on the other device. Clearing your browser's site data erases the planner, so keep a backup.</p></div></details>
   <details class="q"><summary>How does it know what I have left?</summary><div class="a"><p>You enter what's on the shelf once, by container and how full it is. From then on, each completed day takes the scheduled doses off: capsules or tablets for doses on the go, powder first for doses at home. Logged orders are added on their arrival date. Overwrite any number whenever a container looks different from the estimate.</p></div></details>
-  <details class="q"><summary>What are the serving sizes it assumes?</summary><div class="a"><p>Whatever you set. The defaults are three capsules for the day dose, three at night, two for the optional late dose, and two a serving during a break week, and each person changes their own numbers on the This week tab. Stock burn, the reorder date, the buying math and the printed sheet all follow them. One capsule is 500 mg of leaf; 1 g of powder counts as two capsules and a 300 mg tablet as 0.6, so all forms of a strain share one stock count.</p></div></details>
+  <details class="q"><summary>What are the serving sizes it assumes?</summary><div class="a"><p>None. On first run it asks whether you take two doses a day or three, and how many capsules each dose is, and it does not fill those in for you. Every person in the planner has their own numbers, changeable any time under the week's slider. Stock burn, the reorder date, the buying math and the printed sheet all follow them. One capsule is 500 mg of leaf; 1 g of powder counts as two capsules and a 300 mg tablet as 0.6, so all forms of a strain share one stock count.</p></div></details>
   <details class="q"><summary>Can more than one person use it?</summary><div class="a"><p>Yes. Add people in Settings. Each person gets their own week, journal and saved weeks; the shelf and the orders are shared, since the household buys together.</p></div></details>
   <details class="q"><summary>Can I print it?</summary><div class="a"><p>Yes. Export PDF gives a one-page sheet of the week with the rules and any standing items, and Print does the same through the browser.</p></div></details>
   <details class="q"><summary>Do the prices stay current?</summary><div class="a"><p>Yes. The catalog, subscription prices and deal calendar are refreshed from the store every morning, and the planner also checks live prices when you open it. The date of the last refresh is shown on the Stock &amp; orders tab.</p></div></details>
@@ -352,7 +352,7 @@
   var el = document.getElementById("money"), asof = document.getElementById("asof");
   if (!SNAP || !SNAP.catalog || !SNAP.catalog.strains) return;
   var strains = SNAP.catalog.strains;
-  var caps = 3 + 3 + 2, month = caps * 30;
+  var caps = 3 + 3, month = caps * 30;
   var list = null, best = null, bestLabel = "";
   Object.keys(strains).forEach(function(k){
     var x = strains[k];
