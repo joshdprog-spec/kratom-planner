@@ -362,6 +362,10 @@
   .subs b { color: var(--cream); }
   .subs .yes { color: #9fd3a6; }
   .subs .no { color: var(--cream-dim); }
+  .subs .opt { display: inline-block; margin: 2px 10px 2px 0; }
+  .subs .opt.win { color: var(--cream); }
+  .subs .opt .tagw { font-size: 7.5px; letter-spacing: 1px; text-transform: uppercase; color: #9fd3a6; margin-left: 4px; }
+  .suprow a.sub { background: rgba(90,158,99,0.15); border: 1px solid rgba(90,158,99,0.6); color: #9fd3a6; }
   .leadrow { text-align: center; font-size: 10px; color: var(--cream-dim); margin-top: 10px; }
   .leadrow input { width: 44px; font-family: inherit; font-size: 10px; background: #16301f; color: #f2ecdd; border: 1px solid #2c4a35; border-radius: 6px; padding: 3px 5px; text-align: right; }
 
@@ -1371,13 +1375,15 @@
         var sized = pr.variants.filter(function(v){ return v.count && v.available; });
         var fit = sized.filter(function(v){ return v.count <= Math.max(need, Math.min.apply(null, sized.map(function(x){ return x.count; }))); });
         var pickV = (fit.length ? fit : sized).slice().sort(function(a,b){ return a.price/a.count - b.price/b.count; })[0];
-        suggested[k] = pickV || null;
+        var bb = tracked ? bestBuy(k, perDay, soon, days) : null;
+        suggested[k] = bb ? bb.pick : (pickV ? { kind: "one", v: pickV, label: pickV.label + " one-time", cashNow: pickV.price, link: SITE + "/cart/" + pickV.id + ":1" } : null);
         right = '<span class="meta">' + meta + '</span>' +
           (onSale ? '<span class="tag sale">marked down</span>' : "") +
           (allOut ? '<span class="tag out">out of stock</span>' : someOut ? '<span class="tag out">some sizes out</span>' : "") +
-          (pickV ? ' <a class="cart" href="' + SITE + "/cart/" + pickV.id + ':1" target="_blank" rel="noopener" title="Opens a cart with this item">Add ' + pickV.label + ' \u00b7 ' + money(pickV.price) + '</a>' : "") +
+          (suggested[k] ? ' <a class="cart' + (suggested[k].kind === "sub" ? " sub" : "") + '" href="' + suggested[k].link + '" target="_blank" rel="noopener" title="' + (suggested[k].kind === "sub" ? "Opens a cart with the subscription selected" : "Opens a cart with this item") + '">' +
+              (suggested[k].kind === "sub" ? "Subscribe " + suggested[k].v.label + " " + suggested[k].plan.name + " \u00b7 " + money(suggested[k].cashNow) : "Add " + suggested[k].v.label + " \u00b7 " + money(suggested[k].cashNow)) + '</a>' : "") +
           ' <a class="pg" href="' + SITE + "/products/" + SUPPLIER[k] + '" target="_blank" rel="noopener">page</a>' +
-          (pickV ? ' <a class="pg logit" href="#ordPanel" data-key="' + k + '" data-vid="' + pickV.id + '">log order</a>' : "");
+          (suggested[k] ? ' <a class="pg logit" href="#ordPanel" data-key="' + k + '" data-vid="' + suggested[k].v.id + '">log order</a>' : "");
       } else {
         right = '<span class="meta">no price data</span> <a href="' + SITE + "/products/" + SUPPLIER[k] + '" target="_blank" rel="noopener">Reorder</a>';
       }
@@ -1399,9 +1405,12 @@
         else if (x.kind === "wait") why = name + ": about " + x.days + " days left, enough to <b>wait for " + pm.percent + "% off on " + shortDate(pm.startsAt) + "</b> and order that day.";
         else why = name + ": about " + x.days + " days left; <b>" + pm.percent + "% off on " + shortDate(pm.startsAt) + "</b> lands about when you'd reorder \u2014 stock up that day.";
         var sv = suggested[x.k];
+        if (sv && sv.kind === "sub") why += " Cheapest over time is the <b>subscription, " + sv.v.label + " " + sv.plan.name + "</b> at " + money(sv.cashNow) + " a delivery.";
+        else if (sv && sv.kind === "sale") why += " Buy the <b>" + sv.v.label + "</b> that day for about " + money(sv.cashNow) + ".";
+        else if (sv) why += " Best buy: <b>" + sv.v.label + "</b> at " + money(sv.cashNow) + ".";
         html += '<div class="rec"><span class="why">' + why + '</span>' +
-          (sv ? '<a class="cart" href="' + SITE + "/cart/" + sv.id + ':1" target="_blank" rel="noopener">Add ' + sv.label + ' \u00b7 ' + money(sv.price) + '</a>' +
-                '<a class="did logit" href="#ordPanel" data-key="' + x.k + '" data-vid="' + sv.id + '">I ordered this</a>' : "") +
+          (sv ? '<a class="cart' + (sv.kind === "sub" ? " sub" : "") + '" href="' + sv.link + '" target="_blank" rel="noopener">' + (sv.kind === "sub" ? "Subscribe" : "Add to cart") + ' \u00b7 ' + money(sv.cashNow) + '</a>' +
+                '<a class="did logit" href="#ordPanel" data-key="' + x.k + '" data-vid="' + sv.v.id + '">I ordered this</a>' : "") +
           '</div>';
       });
       dt.innerHTML = html;
@@ -1445,8 +1454,72 @@
     if (SNAP && SNAP.fetchedAt) parts.push("deals as of " + new Date(SNAP.fetchedAt).toLocaleDateString());
     stamp.textContent = parts.join(" \u00b7 ");
   }
+  // ---------- buying model: one-time vs subscription ----------
+  // Fallback plan list (the refresh script captures the live one per product).
+  var SUB_FALLBACK = { percent: 20, plans: [
+    { id: 6391857373, name: "every 2 weeks", days: 14 }, { id: 6391824605, name: "every 4 weeks", days: 28 },
+    { id: 6391890141, name: "every 6 weeks", days: 42 }, { id: 6391922909, name: "every 2 months", days: 61 },
+    { id: 6391955677, name: "every 3 months", days: 91 } ] };
+  function plansFor(k){
+    var pr = currentProducts()[k];
+    var fromSnap = SNAP && SNAP.products && SNAP.products[SUPPLIER[k]] && SNAP.products[SUPPLIER[k]].plans;
+    var raw = (fromSnap && fromSnap.length) ? fromSnap : null;
+    if (!raw) return SUB_FALLBACK.plans.map(function(x){ return { id: x.id, name: x.name, days: x.days, percent: SUB_FALLBACK.percent }; });
+    return raw.filter(function(x){ return x.days && x.percent; }).map(function(x){ return { id: x.id, name: x.name.replace(/^Autoship\s+/i, "").toLowerCase(), days: x.days, percent: x.percent }; });
+  }
+  // Every sensible way to buy `k` at `perDay` use, scored over a year of that use.
+  //  cashNow  = what you pay at checkout today
+  //  perServ  = cost per serving you'd actually take within the year; stock you wouldn't
+  //             get through in a year is money tied up, not savings, so a huge lot scores badly
+  function buyOptions(k, perDay, soon, daysLeft){
+    var pr = currentProducts()[k]; if (!pr || !(perDay > 0)) return [];
+    var H = 365, need = perDay * H, servCe = k === "KAVA" ? 1 : 3;
+    var opts = [];
+    pr.variants.filter(function(v){ return v.count && v.available; }).forEach(function(v){
+      var used1 = Math.min(v.count, need);
+      opts.push({ kind: "one", v: v, label: v.label + " one-time", cashNow: v.price, perServ: v.price / used1 * servCe,
+                  coversDays: v.count / perDay, link: SITE + "/cart/" + v.id + ":1" });
+      // a coming sale on this strain: one-time at the sale price, if stock lasts until then
+      if (soon && soon.percent && daysLeft !== null){
+        var inDays = Math.ceil((Date.parse(soon.startsAt) - Date.now()) / 86400000);
+        if (inDays + state.leadDays <= daysLeft){
+          var sp = v.price * (1 - soon.percent / 100);
+          opts.push({ kind: "sale", v: v, label: v.label + " on " + shortDate(soon.startsAt) + " (" + soon.percent + "% off)", cashNow: sp,
+                      perServ: sp / used1 * servCe, coversDays: v.count / perDay, when: soon, link: SITE + "/cart/" + v.id + ":1" });
+        }
+      }
+      plansFor(k).forEach(function(pl){
+        var rate = v.count / pl.days;               // capsule-equivalents delivered per day
+        if (rate < perDay * 0.85) return;            // would leave you short between deliveries
+        var price = v.price * (1 - pl.percent / 100);
+        var deliveries = H / pl.days;
+        var delivered = v.count * deliveries, usedS = Math.min(delivered, need);
+        opts.push({ kind: "sub", v: v, plan: pl, label: v.label + " subscription " + pl.name, cashNow: price,
+                    perServ: (price * deliveries) / usedS * servCe, coversDays: pl.days, surplus: rate / perDay - 1,
+                    link: SITE + "/cart/" + v.id + ":1?selling_plan=" + pl.id });
+      });
+    });
+    return opts;
+  }
+  // Joshua's rule: cheapest over time wins; anything within 5% of it is a tie, and the tie goes to the lowest price today.
+  function bestBuy(k, perDay, soon, daysLeft){
+    var opts = buyOptions(k, perDay, soon, daysLeft);
+    if (!opts.length) return null;
+    var minServ = Math.min.apply(null, opts.map(function(o){ return o.perServ; }));
+    var ties = opts.filter(function(o){ return o.perServ <= minServ * 1.05; });
+    ties.sort(function(a, b){ return a.cashNow - b.cashNow; });
+    var pick = ties[0];
+    // the natural comparison: the cheapest-now option that isn't the pick, and the cheapest-over-time one
+    var cheapestNow = opts.slice().sort(function(a,b){ return a.cashNow - b.cashNow; })[0];
+    var cheapestTime = opts.slice().sort(function(a,b){ return a.perServ - b.perServ; })[0];
+    return { pick: pick, cheapestNow: cheapestNow, cheapestTime: cheapestTime, all: opts };
+  }
+  function optText(o){
+    return o.label + " \u2014 " + money(o.cashNow) + (o.kind === "sub" ? " per delivery" : " now") + ", " + (o.perServ * 100).toFixed(0) + "\u00a2 a serving";
+  }
+
   // ---------- orders ----------
-  var SUB_DISCOUNT = 0.10;   // the store's stated subscribe-and-save rate
+  var SUB_DISCOUNT = 0.20;   // the store's Subscribe & Save rate
   function liveProducts(){ return (state.supplier && state.supplier.v === 2 && state.supplier.products) || null; }
   function currentProducts(){ return liveProducts() || snapshotProducts() || {}; }
   function sizesFor(k){
@@ -1546,34 +1619,36 @@
     });
     if (!state.orders.length) L.innerHTML = '<div>No orders on record.</div>';
 
-    // subscription verdict per strain
+    // subscribe or buy? the price model per tracked strain, plus what your order history says
     var box = document.getElementById("subsBox"); box.innerHTML = "";
+    var use = weeklyUsage();
     var byKey = {};
     state.orders.forEach(function(o){ (byKey[o.key] = byKey[o.key] || []).push(o); });
     var lines = [];
-    Object.keys(byKey).forEach(function(k){
-      var os = byKey[k].slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
-      var n = os.length;
-      if (n < 2) { lines.push('<div><b>' + S[k].name + '</b>: 1 order logged \u2014 need 3 to judge.</div>'); return; }
-      var gaps = []; for (var i = 1; i < n; i++) gaps.push((Date.parse(os[i].date) - Date.parse(os[i-1].date)) / 86400000);
-      var mean = gaps.reduce(function(a,b){return a+b;},0) / gaps.length;
-      var sd = Math.sqrt(gaps.reduce(function(a,b){ return a + (b-mean)*(b-mean); }, 0) / gaps.length);
-      var spend = os.reduce(function(a,o){ return a + (o.paid||0); }, 0);
-      var listTotal = os.reduce(function(a,o){ var u = unitList(o.key, o.size, o.label); return a + (u ? u * o.qty : (o.paid||0)); }, 0);
-      var captured = listTotal > 0 ? 1 - spend / listTotal : 0;
-      var perMonth = mean > 0 ? (spend / n) * (30 / mean) : 0;
-      var txt = '<b>' + S[k].name + '</b>: ' + n + ' orders, every ~' + Math.round(mean) + ' days, ~$' + perMonth.toFixed(0) + '/mo, sale savings ~' + Math.round(captured*100) + '%. ';
-      if (n < 3) txt += 'One more order and the app can judge a subscription.';
-      else if (captured >= SUB_DISCOUNT) txt += '<span class="no">Stay one-off \u2014 timing sales already beats the ' + Math.round(SUB_DISCOUNT*100) + '% subscription discount.</span>';
-      else if (sd / mean > 0.45) txt += '<span class="no">Too irregular for a subscription; keep ordering by the nudges.</span>';
-      else {
-        var weeks = Math.max(1, Math.round(mean / 7));
-        var save = perMonth * 12 * SUB_DISCOUNT;
-        txt += '<span class="yes">Subscribe every ' + weeks + ' week' + (weeks > 1 ? 's' : '') + ' \u2014 saves about $' + save.toFixed(0) + '/yr at ' + Math.round(SUB_DISCOUNT*100) + '% off.</span>';
+    ORDER.forEach(function(k){
+      if (!state.tracked[k]) return;
+      var perDay = (use[k] || 0) / 7;
+      if (!(perDay > 0)) return;
+      var promos = promosFor(SUPPLIER[k]);
+      var soon = promos.filter(function(pm){ return promoState(pm) === "upcoming"; })[0];
+      var inv = state.inventory[k] || 0, days = Math.floor(inv / perDay);
+      var bb = bestBuy(k, perDay, soon, days);
+      if (!bb) return;
+      var txt = '<b>' + S[k].name + '</b> \u00b7 ~' + (perDay * 7).toFixed(0) + (k === "KAVA" ? ' gummies' : ' caps') + '/week. ';
+      txt += '<span class="opt win">' + optText(bb.pick) + '<span class="tagw">pick</span></span>';
+      if (bb.cheapestNow !== bb.pick) txt += '<span class="opt">cheapest today: ' + optText(bb.cheapestNow) + '</span>';
+      if (bb.cheapestTime !== bb.pick && bb.cheapestTime !== bb.cheapestNow) txt += '<span class="opt">cheapest over time: ' + optText(bb.cheapestTime) + '</span>';
+      var os = (byKey[k] || []).slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+      if (os.length >= 2){
+        var spend = os.reduce(function(a,o){ return a + (o.paid||0); }, 0);
+        var listTotal = os.reduce(function(a,o){ var u = unitList(o.key, o.size, o.label); return a + (u ? u * o.qty : (o.paid||0)); }, 0);
+        var captured = listTotal > 0 ? 1 - spend / listTotal : 0;
+        txt += '<div class="no">Your ' + os.length + ' logged orders averaged ' + Math.round(captured*100) + '% off list' +
+          (captured >= SUB_DISCOUNT ? ' \u2014 you already beat the subscription by timing sales.' : ' \u2014 the subscription\u2019s ' + Math.round(SUB_DISCOUNT*100) + '% would have been better.') + '</div>';
       }
       lines.push('<div>' + txt + '</div>');
     });
-    if (lines.length){ box.innerHTML = '<h3>Subscribe or not?</h3>' + lines.join(""); }
+    if (lines.length){ box.innerHTML = '<h3>Subscribe or buy?</h3><div class="no" style="border:none;padding-bottom:6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Rule: cheapest per serving over a year of your actual use wins (stock you would not get through in a year counts as money tied up, not savings); within 5% of that, the lowest price today wins.</div>' + lines.join(""); }
   }
 
   document.getElementById("supRefresh").addEventListener("click", fetchLivePrices);
