@@ -1770,7 +1770,7 @@
     var byKey = {};
     state.orders.forEach(function(o){ (byKey[o.key] = byKey[o.key] || []).push(o); });
     var lines = [];
-    var projectedYear = 0, projectedStrains = 0;
+    var projectedYear = 0, projectedStrains = 0, regularYear = 0;
     ORDER.forEach(function(k){
       if (!state.tracked[k]) return;
       var pools = stockPools(k, use);
@@ -1783,6 +1783,7 @@
         var bb = bestBuy(k, pool.perDay, soon, pdays, pool.buyForms);
         if (!bb) return;
         projectedYear += bb.pick.annual; projectedStrains++;
+        regularYear += spendOneTime(bb.pick.v.price, bb.pick.v.count, pool.perDay, 365);   // same item, list price, no subscription or sale
         var head = '<b>' + S[k].name + '</b>' + (pool.label ? ' <i>' + pool.label + '</i>' : '') + ': ' + bb.pick.label + ' \u2014 ' + money(bb.pick.cashNow) + (bb.pick.kind === "sub" ? ' a delivery' : '');
         var body = '<span class="opt win">' + optText(bb.pick) + '<span class="tagw">pick</span></span>';
         if (bb.cheapestNow !== bb.pick) body += '<span class="opt">least up front: ' + optText(bb.cheapestNow) + '</span>';
@@ -1803,14 +1804,19 @@
       }
       if (txt) lines.push(txt);
     });
-    renderTally(projectedYear, projectedStrains);
+    renderTally(projectedYear, projectedStrains, regularYear);
     if (lines.length){ box.innerHTML = '<details><summary>What to buy, per strain (tap a strain for the math)</summary><div><div class="no" style="border:none;padding:4px 0 6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Picks follow your buying style. Real ties go to whichever asks for less up front, then to the lower yearly cost.</div>' + lines.join("") + '</div></details>'; }
   }
 
-  function renderTally(projectedYear, n){
+  function renderTally(projectedYear, n, regularYear){
     var el = document.getElementById("costTally"); el.innerHTML = "";
     var parts = [];
-    if (n > 0) parts.push('<div class="t"><div class="n">' + money(projectedYear / 12) + '</div><div class="l">per month, projected</div><div class="s">' + n + ' stocked strain' + (n > 1 ? 's' : '') + ' at current use, buying the way the app suggests</div></div>');
+    if (n > 0){
+      parts.push('<div class="t"><div class="n">' + money(projectedYear / 12) + '</div><div class="l">per month, projected</div><div class="s">' + n + ' stocked strain' + (n > 1 ? 's' : '') + ' at current use, buying the way the app suggests</div></div>');
+      var save = regularYear - projectedYear;
+      parts.push('<div class="t"><div class="n">' + money(regularYear / 12) + '</div><div class="l">per month, regular price</div><div class="s">same items at list price, no subscriptions or sales' +
+        (save > 0.5 ? ' — you save <b>' + money(save / 12) + '/mo</b> (' + Math.round(save / regularYear * 100) + '%)' : '') + '</div></div>');
+    }
     var now = Date.now(), recent = 0, all = 0, first = null;
     state.orders.forEach(function(o){
       var t = Date.parse(o.date); all += o.paid || 0;
