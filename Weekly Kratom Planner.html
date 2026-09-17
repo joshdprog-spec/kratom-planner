@@ -366,6 +366,11 @@
   .subs b { color: var(--cream); }
   .subs .yes { color: #9fd3a6; }
   .subs .no { color: var(--cream-dim); }
+  .tally { display: flex; gap: 10px 28px; justify-content: center; flex-wrap: wrap; margin: 4px 0 14px; }
+  .tally .t { text-align: center; }
+  .tally .n { font-family: Georgia, serif; font-size: 22px; color: var(--gold); line-height: 1.1; }
+  .tally .l { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--cream-dim); margin-top: 3px; }
+  .tally .s { font-size: 9.5px; color: var(--cream-dim); margin-top: 2px; }
   .subs details { border-top: 1px solid rgba(44,74,53,0.5); }
   .subs details > div { padding: 2px 0 6px 14px; }
   .subs summary { cursor: pointer; padding: 5px 2px; list-style: none; }
@@ -604,6 +609,7 @@
 
     <div class="panel orders" id="ordPanel" data-view="stock">
       <h2>Orders</h2>
+      <div class="tally" id="costTally"></div>
       <div class="hint">Nothing is recorded here on its own. After you place an order with the supplier, log it so the stock is counted when it arrives.</div>
       <div class="orow" id="ordOpenRow"><button class="savebtn" id="ordOpen">+ Log an order</button></div>
       <div id="ordForm" style="display:none">
@@ -1764,6 +1770,7 @@
     var byKey = {};
     state.orders.forEach(function(o){ (byKey[o.key] = byKey[o.key] || []).push(o); });
     var lines = [];
+    var projectedYear = 0, projectedStrains = 0;
     ORDER.forEach(function(k){
       if (!state.tracked[k]) return;
       var pools = stockPools(k, use);
@@ -1775,6 +1782,7 @@
         var pdays = Math.floor(pool.stock / pool.perDay);
         var bb = bestBuy(k, pool.perDay, soon, pdays, pool.buyForms);
         if (!bb) return;
+        projectedYear += bb.pick.annual; projectedStrains++;
         var head = '<b>' + S[k].name + '</b>' + (pool.label ? ' <i>' + pool.label + '</i>' : '') + ': ' + bb.pick.label + ' \u2014 ' + money(bb.pick.cashNow) + (bb.pick.kind === "sub" ? ' a delivery' : '');
         var body = '<span class="opt win">' + optText(bb.pick) + '<span class="tagw">pick</span></span>';
         if (bb.cheapestNow !== bb.pick) body += '<span class="opt">least up front: ' + optText(bb.cheapestNow) + '</span>';
@@ -1795,9 +1803,29 @@
       }
       if (txt) lines.push(txt);
     });
+    renderTally(projectedYear, projectedStrains);
     if (lines.length){ box.innerHTML = '<details><summary>What to buy, per strain (tap a strain for the math)</summary><div><div class="no" style="border:none;padding:4px 0 6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Picks follow your buying style. Real ties go to whichever asks for less up front, then to the lower yearly cost.</div>' + lines.join("") + '</div></details>'; }
   }
 
+  function renderTally(projectedYear, n){
+    var el = document.getElementById("costTally"); el.innerHTML = "";
+    var parts = [];
+    if (n > 0) parts.push('<div class="t"><div class="n">' + money(projectedYear / 12) + '</div><div class="l">per month, projected</div><div class="s">' + n + ' stocked strain' + (n > 1 ? 's' : '') + ' at current use, buying the way the app suggests</div></div>');
+    var now = Date.now(), recent = 0, all = 0, first = null;
+    state.orders.forEach(function(o){
+      var t = Date.parse(o.date); all += o.paid || 0;
+      if (first === null || t < first) first = t;
+      if (now - t <= 90 * 86400000) recent += o.paid || 0;
+    });
+    if (state.orders.length){
+      var months = Math.max(1, (now - first) / (30.4 * 86400000));
+      parts.push('<div class="t"><div class="n">' + money(recent / 3) + '</div><div class="l">per month, last 3 months</div><div class="s">' + money(recent) + ' logged since ' + addDays(todayKey(), -90) + '</div></div>');
+      parts.push('<div class="t"><div class="n">' + money(all / months) + '</div><div class="l">per month, all logged orders</div><div class="s">' + money(all) + ' over ' + months.toFixed(1) + ' months</div></div>');
+    } else if (n > 0) {
+      parts.push('<div class="t"><div class="n">\u2014</div><div class="l">actual</div><div class="s">log orders and this fills in</div></div>');
+    }
+    el.innerHTML = parts.join("");
+  }
   function renderOrders(){
     fillOrderForm(null, null);
     document.getElementById("leadDays").value = state.leadDays;
