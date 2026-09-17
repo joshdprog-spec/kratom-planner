@@ -90,7 +90,14 @@ async function main() {
   const home = await (await fetch(SITE + "/", { headers: UA })).text();
   const promos = extractPromos(home);
   const shipMatch = home.match(/free shipping on orders \$\d+\+[^"<\\]{0,160}/i);
-  const freeShipping = shipMatch ? shipMatch[0].replace(/\s+/g, " ").trim() : "";
+  let freeShipping = shipMatch ? shipMatch[0].replace(/\s+/g, " ").trim() : "";
+  // The store leaves stale copy in its banner. If the offer carries a
+  // "valid through <date>" clause and that date has passed, drop the line.
+  const valid = /offer valid through ([A-Za-z]{3,9}\.? \d{1,2},? \d{4})/i.exec(freeShipping);
+  if (valid) {
+    const until = Date.parse(valid[1].replace(".", ""));
+    if (!isNaN(until) && until + 86400000 < Date.now()) freeShipping = "";
+  }
 
   const catalog = await (await fetch(SITE + "/products.json?limit=250", { headers: UA })).json();
   const products = {};
