@@ -81,6 +81,26 @@
   }
   .prename:hover { color: var(--gold); border-color: var(--gold-soft); }
 
+  /* tabs */
+  .tabs { display: flex; justify-content: center; gap: 6px; margin-bottom: 14px; }
+  .tab {
+    font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 9px 22px; border-radius: 9px 9px 0 0; cursor: pointer;
+    background: transparent; color: var(--cream-dim); border: 1px solid var(--line); border-bottom: none;
+    position: relative;
+  }
+  .tab.active { background: linear-gradient(160deg, var(--card2), var(--card)); color: var(--gold); border-color: var(--gold-soft); }
+  .tab .badge {
+    display: inline-block; margin-left: 8px; font-size: 8.5px; letter-spacing: 0.5px; text-transform: none;
+    padding: 2px 7px; border-radius: 999px; background: var(--red); color: #fff; vertical-align: 1px;
+  }
+  .tab .badge.soft { background: rgba(217,195,74,0.25); color: #d9c34a; border: 1px solid rgba(217,195,74,0.5); }
+  .tab .badge:empty { display: none; }
+  body.view-week .panel[data-view="stock"] { display: none !important; }
+  body.view-stock .panel[data-view="week"] { display: none !important; }
+  .viewnote { text-align: center; font-size: 10px; color: var(--cream-dim); margin: -6px 0 12px; font-style: italic; }
+  body.view-week .viewnote { display: none; }
+
   .q { font-family: Georgia, serif; font-size: 16px; color: var(--cream); margin-bottom: 14px; text-align: center; }
   .slider-row { display: flex; align-items: center; gap: 14px; }
   .slider-row .end {
@@ -322,6 +342,7 @@
     .slider-row .end { width: 64px; font-size: 8.5px; }
     .opts { gap: 10px 14px; }
     .btns { flex-wrap: wrap; gap: 8px; }
+    .tab { flex: 1; padding: 9px 8px; font-size: 10px; letter-spacing: 1px; }
     button { padding: 10px 16px; font-size: 11px; letter-spacing: 1px; }
     thead th { padding: 7px 6px; font-size: 8px; letter-spacing: 1px; }
     tbody td { padding: 7px 6px; font-size: 11px; }
@@ -364,7 +385,8 @@
 
   @media print {
     body { background: #fff !important; color: #2b2b28 !important; padding: 0; }
-    .leafmark, .panel.controls, .panel.facts, .panel.profilebar, .panel.journal, .panel.inventory, .btns, .chk { display: none !important; }
+    .leafmark, .panel.controls, .panel.facts, .panel.profilebar, .panel.journal, .panel.inventory, .panel.orders, .panel.supplier, .btns, .chk, .tabs, .viewnote, .syncnote { display: none !important; }
+    body.view-stock .panel#result { display: block !important; }
     .panel { background: #fff !important; border: none; box-shadow: none; padding: 0; }
     h1, h1 em, .masthead .eyebrow { color: #1f3d2b !important; }
     table { background: #fff !important; border-color: #ccc; }
@@ -419,7 +441,13 @@
     </div>
     <div class="syncnote" id="syncNote"></div>
 
-    <div class="panel controls">
+    <div class="tabs">
+      <button class="tab active" data-tab="week" id="tabWeek">This week</button>
+      <button class="tab" data-tab="stock" id="tabStock">Stock &amp; orders<span class="badge" id="stockBadge"></span></button>
+    </div>
+    <div class="viewnote">Once a month is plenty here. The week tab is for every day.</div>
+
+    <div class="panel controls" data-view="week">
       <div class="q">How do you want this week to feel?</div>
       <div class="slider-row">
         <div class="end"><b>Locked in</b> work &amp; drive</div>
@@ -445,7 +473,7 @@
       </div>
     </div>
 
-    <div class="panel" id="result" style="display:none">
+    <div class="panel" id="result" data-view="week" style="display:none">
       <div class="stamp" id="stamp"></div>
       <div class="tablewrap"><table>
         <thead><tr><th>Day</th><th>Day</th><th>Night</th><th id="lateHead">Late (only if needed)</th></tr></thead>
@@ -464,7 +492,7 @@
       </div>
     </div>
 
-    <div class="panel journal" id="journalPanel" style="display:none">
+    <div class="panel journal" id="journalPanel" data-view="week" style="display:none">
       <h2>Tonight's Journal</h2>
       <div class="jrow">
         <label>Buzz:
@@ -480,7 +508,7 @@
       <div class="jhist" id="jhist"></div>
     </div>
 
-    <div class="panel inventory" id="invPanel">
+    <div class="panel inventory" id="invPanel" data-view="stock">
       <h2>Inventory &mdash; what's on the shelf</h2>
       <div class="orow stockrow">
         <label>Strain <select id="stkKey"></select></label>
@@ -501,7 +529,7 @@
       <div class="invnote">Add each bottle or bag above and the app keeps this estimate: it burns down every day from the schedule, kava at its nightly setting, and orders you log arrive after the lead time. The numbers are capsules (kava: gummies); 1 cap = 0.5 g, so powder shows in grams too. Overwrite a number any time a bottle looks different.</div>
     </div>
 
-    <div class="panel orders" id="ordPanel">
+    <div class="panel orders" id="ordPanel" data-view="stock">
       <h2>Orders</h2>
       <div class="orow">
         <label>Strain <select id="ordKey"></select></label>
@@ -516,7 +544,7 @@
       <div class="subs" id="subsBox"></div>
     </div>
 
-    <div class="panel supplier" id="supPanel">
+    <div class="panel supplier" id="supPanel" data-view="stock">
       <h2>Supplier &mdash; Super Speciosa</h2>
       <div class="dealtoday" id="dealToday"></div>
       <div class="supgrid" id="supGrid"></div>
@@ -524,7 +552,7 @@
       <div class="supfoot"><span id="supStamp"></span><button id="supRefresh">Refresh prices</button></div>
     </div>
 
-    <div class="panel facts">
+    <div class="panel facts" data-view="week">
       <h2>Did You Know</h2>
       <div class="fact" id="factText"></div>
       <div class="fact-controls"><button id="nextFact">Another one</button></div>
@@ -1309,7 +1337,11 @@
       if (groups.wait.length) lines.push("<b>Wait for the sale:</b> " + groups.wait.map(function(x){ return nm(x) + " \u2192 " + x.pm.percent + "% off on " + shortDate(x.pm.startsAt); }).join(", ") + ".");
       if (groups.stockup.length) lines.push("<b>Stock up on sale day:</b> " + groups.stockup.map(function(x){ return nm(x) + " \u2192 " + x.pm.percent + "% off on " + shortDate(x.pm.startsAt); }).join(", ") + ".");
       dt.innerHTML = lines.join("<br>");
-    } else dt.innerHTML = "";
+      var badge = document.getElementById("stockBadge");
+      var nowCount = groups["now-sale"].length + groups.now.length;
+      if (nowCount){ badge.textContent = nowCount + " to order"; badge.className = "badge"; }
+      else { badge.textContent = "sale soon"; badge.className = "badge soft"; }
+    } else { dt.innerHTML = ""; document.getElementById("stockBadge").textContent = ""; }
 
     // deal calendar
     var dl = document.getElementById("supDeals");
@@ -1468,6 +1500,23 @@
 
   document.getElementById("supRefresh").addEventListener("click", fetchLivePrices);
   if (IN_ARTIFACT) document.getElementById("supRefresh").style.display = "none";   // no cross-site fetch inside claude.ai
+
+  // ---------- tabs ----------
+  function setView(v){
+    document.body.className = document.body.className.replace(/\bview-\w+/g, "").trim() + " view-" + v;
+    document.getElementById("tabWeek").className = "tab" + (v === "week" ? " active" : "");
+    document.getElementById("tabStock").className = "tab" + (v === "stock" ? " active" : "");
+    try { localStorage.setItem("kratomPlannerTab", v); } catch(e){}
+  }
+  document.getElementById("tabWeek").addEventListener("click", function(){ setView("week"); });
+  document.getElementById("tabStock").addEventListener("click", function(){ setView("stock"); });
+  var savedTab = "week";
+  try { savedTab = localStorage.getItem("kratomPlannerTab") || "week"; } catch(e){}
+  setView(savedTab);
+  // the "log order" links point into the stock tab
+  document.getElementById("supGrid").addEventListener("click", function(e){
+    if (e.target && e.target.classList && e.target.classList.contains("logit")) setView("stock");
+  });
 
   // ---------- controls ----------
   var slider = document.getElementById("spectrum");
