@@ -209,6 +209,29 @@
   td.taken .strain { opacity: 0.45; text-decoration: line-through; }
   td.taken .pill { opacity: 0.45; }
 
+  /* saved weeks */
+  .saved { margin-top: 14px; border-top: 1px solid rgba(44,74,53,0.6); padding-top: 10px; }
+  .saved h3 { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); margin: 0 0 8px; font-weight: 700; text-align: center; }
+  .saverow { display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .saverow input { width: 220px; font-family: inherit; font-size: 11px; background: #16301f; color: #f2ecdd; border: 1px solid #2c4a35; border-radius: 6px; padding: 5px 8px; }
+  .savebtn, .slist button {
+    font-family: inherit; font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 999px; cursor: pointer;
+    background: transparent; color: var(--gold); border: 1px solid var(--gold-soft);
+  }
+  .savebtn:hover, .slist button:hover { background: rgba(201,162,90,0.1); }
+  .slist { font-size: 10.5px; color: var(--cream-dim); }
+  .slist div { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 5px 2px; border-top: 1px solid rgba(44,74,53,0.5); }
+  .slist b { color: var(--cream); }
+  .slist .sd { color: var(--gold); font-family: Georgia, serif; font-style: italic; }
+  .slist .cur { font-size: 8px; letter-spacing: 1px; color: #9fd3a6; text-transform: uppercase; }
+  .slist .x { margin-left: auto; cursor: pointer; font-size: 12px; }
+  .slist .x:hover { color: var(--red); }
+  .slist button.del { border-color: var(--line); color: var(--cream-dim); }
+  .slist .rate { color: var(--gold); }
+  .slist .rate.dim { color: var(--cream-dim); font-style: italic; }
+  .slist .best { color: #d9c34a; }
+
   .rules { font-size: 9.5px; color: var(--cream-dim); line-height: 1.6; margin-top: 12px; }
   .rules b { color: var(--gold-soft); }
 
@@ -385,7 +408,7 @@
 
   @media print {
     body { background: #fff !important; color: #2b2b28 !important; padding: 0; }
-    .leafmark, .panel.controls, .panel.facts, .panel.profilebar, .panel.journal, .panel.inventory, .panel.orders, .panel.supplier, .btns, .chk, .tabs, .viewnote, .syncnote { display: none !important; }
+    .leafmark, .panel.controls, .panel.facts, .panel.profilebar, .panel.journal, .panel.inventory, .panel.orders, .panel.supplier, .btns, .chk, .tabs, .viewnote, .syncnote, .saved { display: none !important; }
     body.view-stock .panel#result { display: block !important; }
     .panel { background: #fff !important; border: none; box-shadow: none; padding: 0; }
     h1, h1 em, .masthead .eyebrow { color: #1f3d2b !important; }
@@ -489,6 +512,14 @@
         <b>Guarantees:</b> Signature Reserve exactly as many days as selected, never back to back &middot; no strain on consecutive days in the same column &middot; no red repeats within 24 hrs in any direction &middot; nothing twice in one day.
         <b>Check-offs:</b> tap the circle on a dose when you take it &mdash; it feeds the journal. Inventory assumes the schedule is followed and burns down on its own, kava included at its nightly setting.
         <b>If effects feel dulled:</b> regenerate toward the other end of the spectrum or take a break day &mdash; never dose up.
+      </div>
+      <div class="saved">
+        <h3>Saved weeks</h3>
+        <div class="saverow">
+          <input type="text" id="saveName" maxlength="40" placeholder="name this week (e.g. work week, printed 9/16)">
+          <button class="savebtn" id="saveWeek">Save this week</button>
+        </div>
+        <div class="slist" id="savedList"></div>
       </div>
     </div>
 
@@ -657,6 +688,8 @@
       var p = st.profiles[id];
       if (p.sigCount === undefined) p.sigCount = p.sigTwice ? 2 : 1;
       if (p.breakWeek === undefined) p.breakWeek = false;
+      if (!p.saved) p.saved = [];
+      if (p.week && !p.weekId) p.weekId = "w" + Date.now().toString(36);
       delete p.sigTwice; delete p.kavaMode;
       if (p.week && p.week.some(function(d){ return d.day === "KAVA" || d.night === "KAVA" || d.late === "KAVA"; })){
         p.week = null; p.weekStamp = null; p.checks = {};
@@ -925,9 +958,11 @@
     document.getElementById("kavaChk").className = "chk" + (kavaOn ? " on" : "");
     document.getElementById("standing").className = "standing" + (kavaOn ? " taken" : "");
     resEl.style.display = "";
+    renderSaved();
     var pos = p.v <= 33 ? "work-heavy" : p.v <= 66 ? "balanced" : "unwind";
     document.getElementById("stamp").textContent =
-      p.name + " · spectrum " + p.v + "/100 (" + pos + ")" + (p.breakWeek ? " · BREAK WEEK: 2 caps a serving, no Late, no Signature Reserve" : "") + (p.weekStamp && p.weekStamp !== "migrated" ? " · generated " + p.weekStamp : "");
+      p.name + " · spectrum " + p.v + "/100 (" + pos + ")" + (p.breakWeek ? " · BREAK WEEK: 2 caps a serving, no Late, no Signature Reserve" : "") + (p.weekStamp && p.weekStamp !== "migrated" ? " · generated " + p.weekStamp : "") +
+      (function(){ var r = weekRating(p, p.weekId); return r && r.buzz !== null ? " · rated buzz " + r.buzz.toFixed(1) + " over " + r.nights + " night" + (r.nights > 1 ? "s" : "") : ""; })();
   }
 
   document.getElementById("tbody").addEventListener("click", function(e){
@@ -1165,7 +1200,7 @@
     var sleep = document.getElementById("jsleep").value;
     var note = document.getElementById("jnote").value.trim();
     if (!buzz && !sleep && !note){ delete p.journal[tk]; }
-    else p.journal[tk] = { buzz: buzz, sleep: sleep, note: note, strains: strainsTakenToday(p) };
+    else p.journal[tk] = { buzz: buzz, sleep: sleep, note: note, strains: strainsTakenToday(p), weekId: p.weekId || null };
     saveState();
     renderJournal();
   });
@@ -1524,8 +1559,92 @@
   function updateVibe(){ vibeText.innerHTML = vibeLabel(+slider.value); }
   slider.addEventListener("input", updateVibe);
 
+  // ---------- saved weeks ----------
+  function weekSig(w){ return JSON.stringify(w); }
+  function snapshotOf(p, name){
+    return { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), weekId: p.weekId, name: name, week: JSON.parse(JSON.stringify(p.week)),
+             v: p.v, hasLate: p.hasLate, sigCount: p.sigCount, breakWeek: !!p.breakWeek, stamp: p.weekStamp || "", savedAt: todayKey() };
+  }
+  // keep the current week unless an identical one is already saved
+  function autoKeep(p, label){
+    if (!p.week) return;
+    var sig = weekSig(p.week);
+    if (p.saved.some(function(x){ return weekSig(x.week) === sig; })) return;
+    p.saved.push(snapshotOf(p, label));
+    while (p.saved.length > 30) p.saved.shift();
+  }
+  function weekRating(p, weekId){
+    if (!weekId) return null;
+    var b = [], sl = [];
+    Object.keys(p.journal).forEach(function(k){
+      var en = p.journal[k]; if (en.weekId !== weekId) return;
+      if (+en.buzz) b.push(+en.buzz);
+      if (+en.sleep) sl.push(+en.sleep);
+    });
+    if (!b.length && !sl.length) return null;
+    var avg = function(a){ return a.length ? a.reduce(function(x,y){return x+y;},0) / a.length : null; };
+    return { buzz: avg(b), sleep: avg(sl), nights: Math.max(b.length, sl.length) };
+  }
+  function renderSaved(){
+    var p = P();
+    var L = document.getElementById("savedList"); L.innerHTML = "";
+    var curSig = p.week ? weekSig(p.week) : null;
+    var best = null;
+    p.saved.forEach(function(x){ var r = weekRating(p, x.weekId); if (r && r.buzz !== null && r.nights >= 3 && (!best || r.buzz > best.buzz)) best = { id: x.id, buzz: r.buzz }; });
+    p.saved.slice().reverse().forEach(function(x){
+      var div = document.createElement("div");
+      var pos = x.v <= 33 ? "work-heavy" : x.v <= 66 ? "balanced" : "unwind";
+      var r = weekRating(p, x.weekId);
+      var rating = r ? '<span class="rate">' + (r.buzz !== null ? "buzz " + r.buzz.toFixed(1) : "") + (r.sleep !== null ? (r.buzz !== null ? " \u00b7 " : "") + "sleep " + r.sleep.toFixed(1) : "") + " (" + r.nights + " night" + (r.nights > 1 ? "s" : "") + ")</span>" : '<span class="rate dim">not rated yet</span>';
+      div.innerHTML = '<span class="sd">' + x.savedAt + '</span><b>' + (x.name || "Untitled").replace(/</g,"&lt;") + '</b>' +
+        (best && best.id === x.id ? '<span class="cur best">\u2605 best</span>' : "") +
+        '<span>' + pos + (x.breakWeek ? " \u00b7 break week" : "") + (x.hasLate && !x.breakWeek ? "" : " \u00b7 two-dose") + '</span>' + rating +
+        (weekSig(x.week) === curSig ? '<span class="cur">current</span>' : '<button data-act="use" data-id="' + x.id + '">Use</button>') +
+        '<button data-act="pdf" data-id="' + x.id + '">PDF</button>' +
+        '<button class="del" data-act="del" data-id="' + x.id + '" title="remove">\u2715</button>';
+      L.appendChild(div);
+    });
+    if (!p.saved.length) L.innerHTML = '<div>Nothing saved yet. Every generated week is kept here automatically when you replace it; name one to keep it on purpose.</div>';
+  }
+  document.getElementById("saveWeek").addEventListener("click", function(){
+    var p = P();
+    if (!p.week){ alert("Generate a week first."); return; }
+    var name = document.getElementById("saveName").value.trim() || ("Week of " + (p.weekStamp || todayKey()));
+    var sig = weekSig(p.week);
+    var existing = p.saved.filter(function(x){ return weekSig(x.week) === sig; })[0];
+    if (existing) existing.name = name; else p.saved.push(snapshotOf(p, name));
+    document.getElementById("saveName").value = "";
+    saveState(); renderSaved();
+  });
+  document.getElementById("savedList").addEventListener("click", function(e){
+    var el = e.target; if (!el.getAttribute) return;
+    var act = el.getAttribute("data-act"), id = el.getAttribute("data-id");
+    if (!act) return;
+    var p = P();
+    var x = p.saved.filter(function(y){ return y.id === id; })[0];
+    if (!x) return;
+    if (act === "del"){ p.saved = p.saved.filter(function(y){ return y.id !== id; }); saveState(); renderSaved(); return; }
+    if (act === "pdf"){
+      if (!(window.jspdf && window.jspdf.jsPDF)){ alert("The PDF library didn't load (offline?)."); return; }
+      var iso = new Date().toISOString().slice(0,10);
+      buildPDF(window.jspdf.jsPDF, { week: x.week, hasLate: x.hasLate, breakWeek: x.breakWeek, v: x.v, name: p.name }).save("Kratom Week " + iso + " " + p.name + " (" + (x.name || "saved") + ").pdf");
+      return;
+    }
+    if (act === "use"){
+      autoKeep(p, "Replaced " + todayKey());
+      p.week = JSON.parse(JSON.stringify(x.week));
+      p.weekId = x.weekId || ("w" + Date.now().toString(36));
+      p.v = x.v; p.hasLate = x.hasLate; p.sigCount = x.sigCount; p.breakWeek = x.breakWeek;
+      p.weekStamp = (x.stamp || x.savedAt) + " (restored)";
+      p.checks = {};
+      saveState(); syncControls(); renderAll();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  });
+
   document.getElementById("gen").addEventListener("click", function(){
     var p = P();
+    autoKeep(p, "Replaced " + todayKey());
     p.v = +slider.value;
     p.hasLate = document.getElementById("threeDose").checked;
     p.sigCount = +document.getElementById("sigCount").value;
@@ -1534,6 +1653,7 @@
     var w = generate(p.v, p.hasLate, p.sigCount, seed, p.breakWeek);
     if (!w){ alert("Couldn't build a valid week with those settings — try nudging the slider."); return; }
     p.week = w;
+    p.weekId = "w" + Date.now().toString(36);
     p.weekStamp = new Date().toLocaleDateString();
     p.checks = {};
     saveState();
