@@ -800,6 +800,12 @@
     return normalize(st);
   }
   var state = loadState();
+  // "Who am I on this device" is a per-device preference, not part of the shared state:
+  // a partner opening the same planner on their phone should open as themselves.
+  function deviceWho(){ try { return localStorage.getItem("kratomPlannerWho"); } catch(e){ return null; } }
+  function setDeviceWho(id){ try { if (id) localStorage.setItem("kratomPlannerWho", id); else localStorage.removeItem("kratomPlannerWho"); } catch(e){} }
+  function applyDeviceProfile(){ var who = deviceWho(); if (who && state.profiles[who]) state.activeProfile = who; }
+  applyDeviceProfile();
   function saveLocal(){ try { localStorage.setItem("kratomPlannerV2", JSON.stringify(state)); } catch(e){} }
   function saveState(){
     state.updatedAt = new Date().toISOString();
@@ -834,7 +840,12 @@
     DOC.set(body).then(function(){ dbBusy = false; if (dbDirty) flushDb(); })
       .catch(function(e){ dbBusy = false; setSync("Sync failed: " + (e && e.code ? e.code : "unknown") + " \u2014 changes kept on this device"); });
   }
-  function setSync(t){ var el = document.getElementById("syncNote"); if (el) el.textContent = t; }
+  function setSync(t){
+    var el = document.getElementById("syncNote"); if (!el) return;
+    // until this device has picked its person, that hint outranks the sync status
+    if (!deviceWho() && Object.keys(state.profiles).length > 1) t = "Tap your name above so this device opens as you.";
+    el.textContent = t;
+  }
   function connectDb(){
     if (!IN_ARTIFACT) return;
     window.claude.use("db").then(function(db){
@@ -848,6 +859,7 @@
         if (remote.updatedAt && remote.updatedAt === state.updatedAt){ setSync("Synced across devices"); return; }
         if (remote.updatedAt && state.updatedAt && remote.updatedAt < state.updatedAt){ dbDirty = true; flushDb(); return; }
         state = normalize(JSON.parse(JSON.stringify(remote)));
+        applyDeviceProfile();
         saveLocal();
         applyBurnAndArrivals();
         syncControls();
@@ -1001,12 +1013,15 @@
       b.textContent = state.profiles[id].name; b.setAttribute("data-profile", id);
       seg.appendChild(b);
     });
+    if (!deviceWho() && Object.keys(state.profiles).length > 1) setSync("");
   }
-  function switchProfile(id){
+  function switchProfile(id, remember){
     state.activeProfile = id;
-    saveState();
+    if (remember !== false) setDeviceWho(id);
+    saveLocal();   // a per-device choice; nothing to share
     syncControls();
     renderAll();
+    setSync(DOC ? "Synced across devices" : "");
   }
   document.getElementById("profileSeg").addEventListener("click", function(e){
     var el = e.target.closest ? e.target.closest("button[data-profile]") : null;
@@ -1025,12 +1040,13 @@
   function addProfile(name){
     var id = "p" + Date.now().toString(36);
     state.profiles[id] = blankProfile(name || "Someone");
-    state.activeProfile = id;
+    state.activeProfile = id;   // open the new person for setup, but this device stays whoever it was
     saveState(); syncControls(); renderAll();
   }
   function removeProfile(id){
     if (Object.keys(state.profiles).length <= 1) return;
     delete state.profiles[id];
+    if (deviceWho() === id) setDeviceWho(null);
     if (state.activeProfile === id) state.activeProfile = Object.keys(state.profiles)[0];
     saveState(); syncControls(); renderAll();
   }
@@ -2090,6 +2106,7 @@
       if (!(d > 0) || (doses >= 2 && !(n > 0)) || (doses === 3 && !(l > 0))){ alert("Enter how many capsules you take for each dose. Half capsules are fine; if you use powder, 1 g counts as 2 capsules."); return; }
       var half = function(x){ return Math.min(12, Math.max(0.5, Math.round(x * 2) / 2)); };
       var p0 = P(); p0.doses = doses; p0.hasLate = doses === 3; p0.days = days;
+      setDeviceWho(state.activeProfile);
       var nn = doses >= 2 ? n : d;
       p0.serve = { day: half(d), night: half(nn), late: doses === 3 ? half(l) : half(Math.min(d, nn)), brk: half(Math.min(d, nn) * 2 / 3) };
       syncControls();
@@ -2142,7 +2159,7 @@
       try {
         var j = JSON.parse(r.result); var st = j.state || j;
         if (!st.profiles) throw new Error("no profiles");
-        state = normalize(st); saveLocal(); applyBurnAndArrivals(); syncControls(); renderSettings(); renderAll();
+        state = normalize(st); applyDeviceProfile(); saveLocal(); applyBurnAndArrivals(); syncControls(); renderSettings(); renderAll();
         alert("Restored.");
       } catch(e){ alert("That file isn't a planner backup."); }
     };
