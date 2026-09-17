@@ -1,0 +1,56 @@
+# Handoff — Weekly Kratom Planner
+
+Written 2026-09-17 at the end of a long Claude Code session. Read this first in any new session.
+
+## What this is
+
+A single-file web app (`Weekly Kratom Planner.html`) for planning a weekly kratom strain rotation from Super Speciosa products, tracking doses and stock, and deciding what to buy. Joshua built it for his household, then decided (2026-09-17) to make it usable by any Super Speciosa customer as a **free static app with data kept in the user's browser**, no accounts. He may approach Super Speciosa (they run an affiliate program: superspeciosa.com/pages/affiliate-program).
+
+## Where things live
+
+- **Repo:** https://github.com/joshdprog-spec/kratom-planner (private, branch `master`). Git identity is repo-local (Joshua / joshd.prog@gmail.com). GitHub CLI is installed and signed in as `joshdprog-spec`; pushes work non-interactively.
+- **Joshua's personal copy:** claude.ai artifact https://claude.ai/artifact/LvvF6aLDNcZexcms4ZgwEy (version 27), capabilities `db` + `downloads`. Shared state lives in db doc `planner/state`. To republish: `python build-artifact.py <out.html>` then publish that file with `url` set to the artifact and `files: {"supplier-data.js": ...}`. Inside claude.ai the page can't fetch the store (CSP), so it relies on the bundled `supplier-data.js`.
+- **Local preview:** `.claude/launch.json` defines `planner` (python http.server on 8765). The pane loads `http://localhost:8765/Weekly%20Kratom%20Planner.html`. Note: this server intermittently truncates the page mid-file; a JS check `document.scripts` length < expected means "reload", not an app bug.
+- **Memory notes:** `~/.claude/projects/C--Users-zolem-Kratom-Planner/memory/` (planner-edited-in-chat-and-code, kratom-planner-artifact, public-app-direction).
+
+## Files
+
+| File | Role |
+|---|---|
+| `Weekly Kratom Planner.html` | The app. ~2,300 lines: a `<style>` block (design tokens, light/dark themes, print) and one IIFE script. |
+| `supplier-data.js` | Generated. `window.SUPPLIER_SNAPSHOT = { fetchedAt, site, freeShipping, promos[], plans[], catalog: { strains{}, items{}, bundles[], unclassified[] } }`. |
+| `refresh-supplier.js` | Node, no deps. Classifies the whole store catalog, fetches each product's `.js` for subscription plans and per-variant plan prices, scrapes the home page for the scheduled deal calendar (Abra discount app JSON embedded in HTML). `node refresh-supplier.js`. |
+| `.github/workflows/refresh-supplier.yml` | Daily 10:17 UTC refresh + commit. Not yet exercised (repo private, no run yet). |
+| `refresh-and-push.ps1` | Windows equivalent with a toast. Registering it as a scheduled task was blocked by the permission classifier; the `schtasks` line is in the old README history / Joshua can run it. |
+| `build-artifact.py` | Strips `<!DOCTYPE>/<html>/<head>/<meta>/<body>` for artifact publishing. |
+| `README.md` | Public-facing readme. |
+| `Super Speciosa Product Reference.md` | Product notes + house rules; still written in "we" voice from the personal era. |
+| Two PDFs | Fixed printable weeks, built from a template in an old scratchpad (`build_sheets.py` is gone; rebuild from the app's PDF export if needed). |
+
+## App architecture (inside the IIFE)
+
+1. **Catalog** (`// ---------- catalog ----------`): `SNAP` from supplier-data.js, `CAT` = its catalog or a small `FALLBACK`. `S[key]` = display info for every strain and item; `STRAIN_KEYS`, `ITEM_KEYS`, `ORDER`. `isItem(k)`, `units(k, n)`. Colour pools come from `state.myStrains` via `byColor()`; reserves (`S[k].reserve`, names matching /reserve/) never enter random pools; `quotaStrain()` is SR if enabled else another reserve.
+2. **State** (`normalize()` migrates everything): `activeProfile`, `profiles{id: {name, v, hasLate, sigCount, breakWeek, week[7], weekId, weekStamp, checks{weekday: {day|night|late|"item:KEY": {on}}}, journal{date: {buzz, sleep, note, strains[], weekId}}, saved[]}}`, `inventory{key: total ce}` (derived), `stock{key: {caps, powder, tabs}}` in capsule-equivalents (1 cap = 500 mg = 1; 1 g = 2; tablet = 0.6; items use `caps` as their unit count), `orders[]`, `tracked{}`, `standing{itemKey: unitsPerDay}`, `place{day,night,late: away|home}`, `awayForm`, `homeForm`, `buyStyle` (cash|year|bulk), `leadDays`, `burn.lastDate`, `myStrains[]`, `setup`, `supplier` (live price cache v4: `byId`), `updatedAt`.
+3. **Storage:** localStorage `kratomPlannerV2`; when `window.claude.use` exists (artifact) the whole state also syncs to db doc `planner/state` (debounced, last-writer-wins, `updatedAt` compare). Per-device prefs: `kratomPlannerTab`, `kratomPlannerOpen` (fold states), `kratomPlannerTheme`.
+4. **Generator:** `poolsFor(v, breakWeek)` builds Day/Night/Late pools by slider position, widens thin pools to ≥3 from neighbouring colours; `generate()` places the reserve quota first (`sigDays`, never adjacent, week wraps), then random fill with `validWeek()` guarantees. If Late can't be filled the gen handler falls back to two-dose days with an alert. Tested with a Node harness across strain sets (`gen-test.js` pattern in scratchpad; extract `catalog` + `generator` sections, stub `state`, `effLate`).
+5. **Burn:** `applyBurnAndArrivals()` on boot and after remote sync: for each completed day since `burn.lastDate`, `dailyServings()` (per profile week, split by `state.place`, plus standing items) is taken from stock via `takeStock()` with `poolOrder(place)` (away: preferred portable form first; home: powder first). Orders add stock on `date + leadDays`.
+6. **Supply + buying:** `weeklyUsage()`, `stockPools()` (portable vs powder piles), `buyOptions()` prices every variant one-time / at an upcoming sale / on each plan (plan price from `planPrices[plan.id]` else percent), scored `spend90`, `annual` (whole packs bought within the window; subs pro-rated), `perServ`; `bestBuy()` by `state.buyStyle`, ties within 1% → less up front → lower annual. `renderSupplier()` draws rows + the "Suggested orders" block; `renderSubs()` the folded math + `renderTally()`; `renderGists()` the top-of-panel summaries.
+7. **UI:** two tabs (`view-week` / `view-stock` body class); every panel = gist + `<details class="more" data-more=...>`; today card with check circles (journal only, no stock effect); standing items list; settings/first-run panel (`#setupPanel`, shown when `!state.setup` or toggled); backup/restore.
+8. **PDF export:** jsPDF from cdnjs, `buildPDF()`; print CSS prints the week table only.
+
+## Conventions and gotchas
+
+- Edits were applied with Python scripts (exact-string `rep()` with asserts) because Bash heredocs mangle `\u` escapes and quotes; write scripts to the scratchpad with the Write tool and run them. After every edit: extract the inline script and `node --check` it, then `python build-artifact.py`.
+- Beware name collisions inside the IIFE (a `poolsFor` clash broke Generate once; a stale `currentProducts` pair overrode the new one). A crude "called-but-not-defined" scan is in the session history.
+- Panel fade-ins must not use `animation-fill-mode: both` (throttled tabs stay invisible).
+- Promo dates are in the store's Eastern time; `shortDate()` formats with `America/New_York`.
+- Test server truncation: check `document.scripts[...].textContent.length` before asserting anything.
+- The store's product JSON allows CORS (`*`); the home page does not.
+
+## Open items
+
+1. **Make the repo public and enable GitHub Pages** (Joshua's call; outward-facing). Then confirm the Actions workflow runs. Neutralize the "we/Joshua" voice in `Super Speciosa Product Reference.md` first.
+2. Catalog assumptions: tincture = 15 servings a bottle (guess); bundles listed but not credited to strains; the `20g-signature-reserve` sampler is classified only if the title regex catches it (fixed but unverified after the last run).
+3. The two printable PDFs predate standing items and the catalog change; regenerate from the app's export if they matter.
+4. `refresh-and-push.ps1` scheduled task not registered (classifier block).
+5. Possible next features Joshua floated: none pending beyond public launch.
