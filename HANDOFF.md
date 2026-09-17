@@ -8,7 +8,7 @@ A single-file web app (`Weekly Kratom Planner.html`) for planning a weekly krato
 
 ## Where things live
 
-- **Repo:** https://github.com/joshdprog-spec/kratom-planner (private, branch `master`). Git identity is repo-local (Joshua / joshd.prog@gmail.com). GitHub CLI is installed and signed in as `joshdprog-spec`; pushes work non-interactively.
+- **Repo:** https://github.com/joshdprog-spec/kratom-planner (public since 2026-09-17, branch `master`). **Live site:** https://joshdprog-spec.github.io/kratom-planner/ (GitHub Pages, legacy build from `master` root; `index.html` redirects to the app file). Git identity is repo-local (Joshua / joshd.prog@gmail.com). GitHub CLI is installed and signed in as `joshdprog-spec`; pushes work non-interactively.
 - **Joshua's personal copy:** claude.ai artifact https://claude.ai/artifact/LvvF6aLDNcZexcms4ZgwEy (version 27), capabilities `db` + `downloads`. Shared state lives in db doc `planner/state`. To republish: `python build-artifact.py <out.html>` then publish that file with `url` set to the artifact and `files: {"supplier-data.js": ...}`. Inside claude.ai the page can't fetch the store (CSP), so it relies on the bundled `supplier-data.js`.
 - **Local preview:** `.claude/launch.json` defines `planner` (python http.server on 8765). The pane loads `http://localhost:8765/Weekly%20Kratom%20Planner.html`. Note: this server intermittently truncates the page mid-file; a JS check `document.scripts` length < expected means "reload", not an app bug.
 - **Memory notes:** `~/.claude/projects/C--Users-zolem-Kratom-Planner/memory/` (planner-edited-in-chat-and-code, kratom-planner-artifact, public-app-direction).
@@ -20,11 +20,12 @@ A single-file web app (`Weekly Kratom Planner.html`) for planning a weekly krato
 | `Weekly Kratom Planner.html` | The app. ~2,300 lines: a `<style>` block (design tokens, light/dark themes, print) and one IIFE script. |
 | `supplier-data.js` | Generated. `window.SUPPLIER_SNAPSHOT = { fetchedAt, site, freeShipping, promos[], plans[], catalog: { strains{}, items{}, bundles[], unclassified[] } }`. |
 | `refresh-supplier.js` | Node, no deps. Classifies the whole store catalog, fetches each product's `.js` for subscription plans and per-variant plan prices, scrapes the home page for the scheduled deal calendar (Abra discount app JSON embedded in HTML). `node refresh-supplier.js`. |
-| `.github/workflows/refresh-supplier.yml` | Daily 10:17 UTC refresh + commit. Not yet exercised (repo private, no run yet). |
+| `.github/workflows/refresh-supplier.yml` | Daily 10:17 UTC refresh + commit. First run 2026-09-17 succeeded and committed `Supplier data refresh 2026-09-17`; each commit triggers a Pages redeploy. `git pull` before editing so the bot's commits don't conflict. |
 | `refresh-and-push.ps1` | Windows equivalent with a toast. Registering it as a scheduled task was blocked by the permission classifier; the `schtasks` line is in the old README history / Joshua can run it. |
 | `build-artifact.py` | Strips `<!DOCTYPE>/<html>/<head>/<meta>/<body>` for artifact publishing. |
 | `README.md` | Public-facing readme. |
-| `Super Speciosa Product Reference.md` | Product notes + house rules; still written in "we" voice from the personal era. |
+| `index.html` | Meta-refresh redirect to `Weekly Kratom Planner.html` so the Pages root URL works. |
+| `Super Speciosa Product Reference.md` | Product notes + house rules (voice neutralized 2026-09-17). |
 | Two PDFs | Fixed printable weeks, built from a template in an old scratchpad (`build_sheets.py` is gone; rebuild from the app's PDF export if needed). |
 
 ## App architecture (inside the IIFE)
@@ -49,7 +50,7 @@ A single-file web app (`Weekly Kratom Planner.html`) for planning a weekly krato
 
 ## Open items
 
-1. **Make the repo public and enable GitHub Pages** (Joshua's call; outward-facing). Then confirm the Actions workflow runs. Neutralize the "we/Joshua" voice in `Super Speciosa Product Reference.md` first.
+1. ~~Make the repo public and enable GitHub Pages~~ Done 2026-09-17: repo public, Pages live, workflow verified, reference doc voice neutralized.
 2. Catalog assumptions: tincture = 15 servings a bottle (guess); bundles listed but not credited to strains; the `20g-signature-reserve` sampler is classified only if the title regex catches it (fixed but unverified after the last run).
 3. The two printable PDFs predate standing items and the catalog change; regenerate from the app's export if they matter.
 4. `refresh-and-push.ps1` scheduled task not registered (classifier block).
