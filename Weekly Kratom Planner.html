@@ -1347,7 +1347,7 @@
   }
   // the two stock pools of a strain with their daily demand. Powder only serves at-home doses; if there is
   // no powder, the portable pool covers everything.
-  function poolsFor(k, use){
+  function stockPools(k, use){
     var u = use[k] || { total: 0, away: 0, home: 0 };
     var st = stockOf(k);
     var portable = (st.caps || 0) + (st.tabs || 0), powder = st.powder || 0;
@@ -1410,7 +1410,7 @@
       var soon = promos.filter(function(pm){ return promoState(pm) === "upcoming"; })[0];
       if (active) left += '<span class="tag sale">' + (active.percent ? active.percent + "% off today" : "on sale") + '</span>';
       else if (soon) left += '<span class="tag soon">' + (soon.percent ? soon.percent + "% off " : "deal ") + shortDate(soon.startsAt) + '</span>';
-      var pools = tracked ? poolsFor(k, use) : [];
+      var pools = tracked ? stockPools(k, use) : [];
       var days = null;   // the tighter pool decides the row's urgency
       suggested[k] = [];
       pools.forEach(function(pool){
@@ -1733,7 +1733,7 @@
     var lines = [];
     ORDER.forEach(function(k){
       if (!state.tracked[k]) return;
-      var pools = poolsFor(k, use);
+      var pools = stockPools(k, use);
       if (!pools.length) return;
       var promos = promosFor(SUPPLIER[k]);
       var soon = promos.filter(function(pm){ return promoState(pm) === "upcoming"; })[0];
