@@ -289,6 +289,15 @@
   }
   .dealtoday:empty { display: none; }
   .dealtoday b { color: var(--gold); }
+  .dealtoday { text-align: left; }
+  .dealtoday .rt { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); text-align: center; margin-bottom: 4px; }
+  .dealtoday .rn { font-size: 9.5px; color: var(--cream-dim); text-align: center; margin-bottom: 8px; font-style: italic; }
+  .dealtoday .rec { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid rgba(201,162,90,0.2); }
+  .dealtoday .rec .why { flex: 1 1 260px; }
+  .dealtoday .rec a { color: var(--gold); text-decoration: none; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; white-space: nowrap; }
+  .dealtoday .rec a.cart { background: rgba(201,162,90,0.12); border: 1px solid var(--gold-soft); border-radius: 999px; padding: 3px 9px; }
+  .dealtoday .rec a.did { border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; color: var(--cream-dim); }
+  .dealtoday .rec a.did:hover { color: var(--gold); border-color: var(--gold-soft); }
   .supgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 4px 24px; }
   .suprow.quiet .nm { color: var(--cream-dim); font-weight: 500; }
   .suprow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--cream); padding: 5px 0; border-top: 1px solid rgba(44,74,53,0.5); flex-wrap: wrap; }
@@ -563,13 +572,18 @@
 
     <div class="panel orders" id="ordPanel" data-view="stock">
       <h2>Orders</h2>
-      <div class="orow">
-        <label>Strain <select id="ordKey"></select></label>
-        <label>Size <select id="ordSize"></select></label>
-        <label>Qty <input type="number" id="ordQty" min="1" step="1" value="1"></label>
-        <label>Paid $ <input type="number" id="ordPaid" min="0" step="0.01"></label>
-        <label>Date <input type="date" id="ordDate"></label>
-        <button id="ordSave">Log order</button>
+      <div class="hint">Nothing is recorded here on its own. After you place an order with the supplier, log it so the stock is counted when it arrives.</div>
+      <div class="orow" id="ordOpenRow"><button class="savebtn" id="ordOpen">+ Log an order</button></div>
+      <div id="ordForm" style="display:none">
+        <div class="invsub">New order</div>
+        <div class="orow">
+          <label>Strain <select id="ordKey"></select></label>
+          <label>Size <select id="ordSize"></select></label>
+          <label>Qty <input type="number" id="ordQty" min="1" step="1" value="1"></label>
+          <label>Paid $ <input type="number" id="ordPaid" min="0" step="0.01" placeholder="total"></label>
+          <label>Ordered on <input type="date" id="ordDate"></label>
+        </div>
+        <div class="orow"><button id="ordSave">Save this order</button><button class="savebtn" id="ordCancel">Cancel</button></div>
       </div>
       <div class="leadrow">Orders take about <input type="number" id="leadDays" min="0" max="30" step="1"> days to arrive. Stock is counted on arrival.</div>
       <div class="olist" id="ordList"></div>
@@ -1096,8 +1110,16 @@
     if (el){ el.style.boxShadow = "0 0 0 2px var(--gold)"; setTimeout(function(){ el.style.boxShadow = ""; }, 1200); }
   });
 
+  document.getElementById("dealToday").addEventListener("click", function(e){
+    var el = e.target; if (!el.classList || !el.classList.contains("logit")) return;
+    e.preventDefault();
+    showOrderForm(true);
+    fillOrderForm(el.getAttribute("data-key"), el.getAttribute("data-vid"));
+    document.getElementById("ordPanel").scrollIntoView({ behavior: "smooth" });
+  });
   document.getElementById("supGrid").addEventListener("click", function(e){
     var el = e.target; if (!el.classList || !el.classList.contains("logit")) return;
+    showOrderForm(true);
     fillOrderForm(el.getAttribute("data-key"), el.getAttribute("data-vid"));
   });
   document.getElementById("invGrid").addEventListener("change", function(e){
@@ -1291,6 +1313,7 @@
     var g = document.getElementById("supGrid");
     g.innerHTML = "";
     var stockUp = [];
+    var suggested = {};
     ORDER.forEach(function(k){
       var pr = products[k];
       var inv = state.inventory[k] || 0;
@@ -1348,6 +1371,7 @@
         var sized = pr.variants.filter(function(v){ return v.count && v.available; });
         var fit = sized.filter(function(v){ return v.count <= Math.max(need, Math.min.apply(null, sized.map(function(x){ return x.count; }))); });
         var pickV = (fit.length ? fit : sized).slice().sort(function(a,b){ return a.price/a.count - b.price/b.count; })[0];
+        suggested[k] = pickV || null;
         right = '<span class="meta">' + meta + '</span>' +
           (onSale ? '<span class="tag sale">marked down</span>' : "") +
           (allOut ? '<span class="tag out">out of stock</span>' : someOut ? '<span class="tag out">some sizes out</span>' : "") +
@@ -1361,20 +1385,28 @@
       g.appendChild(row);
     });
 
-    // reorder nudges (lead time of state.leadDays days + a small buffer)
+    // suggested orders (explicit recommendations; nothing here is an order until you log one)
     var dt = document.getElementById("dealToday");
     if (stockUp.length){
-      var groups = { "now-sale": [], now: [], wait: [], stockup: [] };
-      stockUp.forEach(function(x){ groups[x.kind].push(x); });
-      function nm(x){ return "<b>" + S[x.k].name + "</b> (~" + x.days + "d)"; }
-      var lines = [];
-      if (groups["now-sale"].length) lines.push("<b>Order today, on sale:</b> " + groups["now-sale"].map(function(x){ return nm(x) + " " + x.pm.percent + "% off"; }).join(", ") + ".");
-      if (groups.now.length) lines.push("<b>Order now</b> (" + state.leadDays + " days shipping): " + groups.now.map(function(x){ return nm(x) + (x.pm ? " \u2014 the " + x.pm.percent + "% sale on " + shortDate(x.pm.startsAt) + " is too late" : ""); }).join(", ") + ".");
-      if (groups.wait.length) lines.push("<b>Wait for the sale:</b> " + groups.wait.map(function(x){ return nm(x) + " \u2192 " + x.pm.percent + "% off on " + shortDate(x.pm.startsAt); }).join(", ") + ".");
-      if (groups.stockup.length) lines.push("<b>Stock up on sale day:</b> " + groups.stockup.map(function(x){ return nm(x) + " \u2192 " + x.pm.percent + "% off on " + shortDate(x.pm.startsAt); }).join(", ") + ".");
-      dt.innerHTML = lines.join("<br>");
+      var order = { "now-sale": 0, now: 1, wait: 2, stockup: 3 };
+      stockUp.sort(function(a, b){ return order[a.kind] - order[b.kind] || a.days - b.days; });
+      var html = '<div class="rt">Suggested orders</div>' +
+                 '<div class="rn">Recommendations from your stock, your week and ' + state.leadDays + '-day shipping. Nothing has been ordered.</div>';
+      stockUp.forEach(function(x){
+        var pm = x.pm, name = "<b>" + S[x.k].name + "</b>", why;
+        if (x.kind === "now-sale") why = name + ": about " + x.days + " days left and " + pm.percent + "% off today \u2014 <b>order today</b>.";
+        else if (x.kind === "now") why = name + ": about " + x.days + " days left \u2014 <b>order now</b>" + (pm ? " (the " + pm.percent + "% sale on " + shortDate(pm.startsAt) + " comes too late)" : "") + ".";
+        else if (x.kind === "wait") why = name + ": about " + x.days + " days left, enough to <b>wait for " + pm.percent + "% off on " + shortDate(pm.startsAt) + "</b> and order that day.";
+        else why = name + ": about " + x.days + " days left; <b>" + pm.percent + "% off on " + shortDate(pm.startsAt) + "</b> lands about when you'd reorder \u2014 stock up that day.";
+        var sv = suggested[x.k];
+        html += '<div class="rec"><span class="why">' + why + '</span>' +
+          (sv ? '<a class="cart" href="' + SITE + "/cart/" + sv.id + ':1" target="_blank" rel="noopener">Add ' + sv.label + ' \u00b7 ' + money(sv.price) + '</a>' +
+                '<a class="did logit" href="#ordPanel" data-key="' + x.k + '" data-vid="' + sv.id + '">I ordered this</a>' : "") +
+          '</div>';
+      });
+      dt.innerHTML = html;
       var badge = document.getElementById("stockBadge");
-      var nowCount = groups["now-sale"].length + groups.now.length;
+      var nowCount = stockUp.filter(function(x){ return x.kind === "now" || x.kind === "now-sale"; }).length;
       if (nowCount){ badge.textContent = nowCount + " to order"; badge.className = "badge"; }
       else { badge.textContent = "sale soon"; badge.className = "badge soft"; }
     } else { dt.innerHTML = ""; document.getElementById("stockBadge").textContent = ""; }
@@ -1455,8 +1487,16 @@
     if (!list) return;
     var active = promosFor(SUPPLIER[key]).filter(function(pm){ return promoState(pm) === "active"; })[0];
     var price = list * qty * (active && active.percent ? 1 - active.percent/100 : 1);
-    document.getElementById("ordPaid").value = price.toFixed(2);
+    document.getElementById("ordPaid").placeholder = "~" + price.toFixed(2) + " list";
+    document.getElementById("ordPaid").setAttribute("data-suggest", price.toFixed(2));
   }
+  function showOrderForm(on){
+    document.getElementById("ordForm").style.display = on ? "" : "none";
+    document.getElementById("ordOpenRow").style.display = on ? "none" : "";
+    if (on){ document.getElementById("ordDate").value = todayKey(); fillOrderForm(null, null); }
+  }
+  document.getElementById("ordOpen").addEventListener("click", function(){ showOrderForm(true); });
+  document.getElementById("ordCancel").addEventListener("click", function(){ showOrderForm(false); });
   document.getElementById("ordKey").addEventListener("change", function(){ fillOrderForm(null, null); });
   document.getElementById("ordSize").addEventListener("change", suggestPaid);
   document.getElementById("ordQty").addEventListener("change", suggestPaid);
@@ -1464,7 +1504,8 @@
     var key = document.getElementById("ordKey").value;
     var sz = chosenSize();
     var qty = Math.max(1, parseInt(document.getElementById("ordQty").value || "1", 10));
-    var paid = parseFloat(document.getElementById("ordPaid").value || "0") || 0;
+    var paidEl = document.getElementById("ordPaid");
+    var paid = parseFloat(paidEl.value || paidEl.getAttribute("data-suggest") || "0") || 0;
     var date = document.getElementById("ordDate").value || todayKey();
     if (!key || !sz) return;
     state.orders.push({ id: Date.now().toString(36), date: date, key: key, size: sz.count, label: sz.label, form: sz.form, qty: qty, paid: paid, applied: false });
@@ -1473,6 +1514,7 @@
     applyBurnAndArrivals();
     saveState();
     document.getElementById("ordPaid").value = "";
+    showOrderForm(false);
     renderOrders(); renderInventory();
   });
   document.getElementById("ordList").addEventListener("click", function(e){
@@ -1502,7 +1544,7 @@
         '<span class="x" data-id="' + o.id + '" title="remove">\u2715</span>';
       L.appendChild(div);
     });
-    if (!state.orders.length) L.innerHTML = '<div>No orders logged yet. Log each order and the app learns your reorder rhythm.</div>';
+    if (!state.orders.length) L.innerHTML = '<div>No orders on record.</div>';
 
     // subscription verdict per strain
     var box = document.getElementById("subsBox"); box.innerHTML = "";
