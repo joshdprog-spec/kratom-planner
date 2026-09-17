@@ -158,8 +158,11 @@
     color: #14100a; box-shadow: 0 4px 16px rgba(201,162,90,0.35);
   }
   #gen:hover { box-shadow: 0 6px 22px rgba(201,162,90,0.5); }
-  #printBtn, #pdfBtn { background: transparent; color: var(--gold); border: 1.5px solid var(--gold-soft); }
-  #printBtn:hover, #pdfBtn:hover { background: rgba(201,162,90,0.1); }
+  #printBtn, #pdfBtn, #saveWeek { background: transparent; color: var(--gold); border: 1.5px solid var(--gold-soft); }
+  #printBtn:hover, #pdfBtn:hover, #saveWeek:hover { background: rgba(201,162,90,0.1); }
+  .saverow { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .saverow input { width: 260px; font-family: inherit; font-size: 11px; background: #16301f; color: #f2ecdd; border: 1px solid #2c4a35; border-radius: 6px; padding: 8px 10px; }
+  #saveWeek { padding: 9px 18px; font-size: 11px; }
 
   .stamp { text-align: center; font-size: 10px; color: var(--cream-dim); margin: 2px 0 12px; font-style: italic; letter-spacing: 0.5px; }
 
@@ -212,8 +215,6 @@
   /* saved weeks */
   .saved { margin-top: 14px; border-top: 1px solid rgba(44,74,53,0.6); padding-top: 10px; }
   .saved h3 { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); margin: 0 0 8px; font-weight: 700; text-align: center; }
-  .saverow { display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-  .saverow input { width: 220px; font-family: inherit; font-size: 11px; background: #16301f; color: #f2ecdd; border: 1px solid #2c4a35; border-radius: 6px; padding: 5px 8px; }
   .savebtn, .slist button {
     font-family: inherit; font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
     padding: 5px 12px; border-radius: 999px; cursor: pointer;
@@ -408,7 +409,7 @@
 
   @media print {
     body { background: #fff !important; color: #2b2b28 !important; padding: 0; }
-    .leafmark, .panel.controls, .panel.facts, .panel.profilebar, .panel.journal, .panel.inventory, .panel.orders, .panel.supplier, .btns, .chk, .tabs, .viewnote, .syncnote, .saved { display: none !important; }
+    .leafmark, .panel.controls, .panel.facts, .panel.profilebar, .panel.journal, .panel.inventory, .panel.orders, .panel.supplier, .btns, .saverow, .chk, .tabs, .viewnote, .syncnote, .saved { display: none !important; }
     body.view-stock .panel#result { display: block !important; }
     .panel { background: #fff !important; border: none; box-shadow: none; padding: 0; }
     h1, h1 em, .masthead .eyebrow { color: #1f3d2b !important; }
@@ -494,6 +495,10 @@
         <button id="pdfBtn">Export PDF</button>
         <button id="printBtn">Print</button>
       </div>
+      <div class="saverow">
+        <input type="text" id="saveName" maxlength="40" placeholder="name this week (e.g. work week, printed 9/16)">
+        <button id="saveWeek">Save week</button>
+      </div>
     </div>
 
     <div class="panel" id="result" data-view="week" style="display:none">
@@ -515,10 +520,6 @@
       </div>
       <div class="saved">
         <h3>Saved weeks</h3>
-        <div class="saverow">
-          <input type="text" id="saveName" maxlength="40" placeholder="name this week (e.g. work week, printed 9/16)">
-          <button class="savebtn" id="saveWeek">Save this week</button>
-        </div>
         <div class="slist" id="savedList"></div>
       </div>
     </div>
