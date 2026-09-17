@@ -204,6 +204,7 @@
   .jhist div { padding: 4px 2px; border-top: 1px solid rgba(44,74,53,0.5); }
   .jhist b { color: var(--cream); }
   .jhist .jd { color: var(--gold); font-family: Georgia, serif; font-style: italic; margin-right: 8px; }
+  .jhist .jstrains { font-size: 9.5px; color: var(--cream-dim); font-style: italic; margin-top: 1px; }
 
   /* inventory */
   .invgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 14px; }
@@ -216,6 +217,69 @@
   }
   .low { color: var(--red); font-size: 8.5px; font-weight: 700; letter-spacing: 1px; margin-left: 4px; }
   .invnote { text-align: center; font-size: 9.5px; color: var(--cream-dim); margin-top: 10px; }
+
+  /* supplier */
+  .tablewrap { overflow-x: auto; }
+  .dealtoday {
+    text-align: center; font-size: 12px; color: var(--cream); line-height: 1.5;
+    margin-bottom: 12px; padding: 9px 12px; border-radius: 9px;
+    border: 1px solid rgba(201,162,90,0.4); background: rgba(201,162,90,0.08);
+  }
+  .dealtoday:empty { display: none; }
+  .dealtoday b { color: var(--gold); }
+  .supgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px 16px; }
+  .suprow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--cream); padding: 5px 0; border-top: 1px solid rgba(44,74,53,0.5); flex-wrap: wrap; }
+  .suprow .nm { font-weight: 600; }
+  .suprow .meta { color: var(--cream-dim); font-size: 10px; }
+  .suprow a { color: var(--gold); text-decoration: none; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+  .suprow a:hover { text-decoration: underline; }
+  .tag { display: inline-block; font-size: 7.5px; font-weight: 700; letter-spacing: 0.8px; padding: 2px 6px; border-radius: 4px; margin-left: 5px; vertical-align: 1px; }
+  .tag.sale { background: var(--red); color: #fff; }
+  .tag.soon { background: rgba(217,195,74,0.25); color: #d9c34a; border: 1px solid rgba(217,195,74,0.5); }
+  .tag.out { background: rgba(255,255,255,0.12); color: var(--cream-dim); }
+  .tag.days { background: rgba(90,158,99,0.25); color: #9fd3a6; }
+  .tag.days.short { background: rgba(192,90,68,0.25); color: #f0a08e; }
+  .supdeals { margin-top: 12px; font-size: 10.5px; color: var(--cream-dim); }
+  .supdeals h3 { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); margin: 0 0 6px; font-weight: 700; }
+  .supdeals div.deal { padding: 4px 2px; border-top: 1px solid rgba(44,74,53,0.5); }
+  .supdeals .deal b { color: var(--cream); }
+  .supdeals .deal.active b { color: var(--gold); }
+  .supdeals .dd { color: var(--gold); font-family: Georgia, serif; font-style: italic; margin-right: 8px; }
+  .supfoot { text-align: center; font-size: 9.5px; color: var(--cream-dim); margin-top: 12px; display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  #supRefresh {
+    font-size: 10px; padding: 6px 14px; border-radius: 999px;
+    background: transparent; color: var(--gold); border: 1px solid var(--gold-soft);
+  }
+  #supRefresh:hover { background: rgba(201,162,90,0.1); }
+
+  /* mobile */
+  @media (max-width: 640px) {
+    body { padding: 14px 10px 24px; }
+    h1 { font-size: 26px; }
+    .panel { padding: 14px 12px; border-radius: 11px; }
+    .profilebar { padding: 10px 12px; flex-wrap: wrap; }
+    .slider-row { gap: 8px; }
+    .slider-row .end { width: 64px; font-size: 8.5px; }
+    .opts { gap: 10px 14px; }
+    .btns { flex-wrap: wrap; gap: 8px; }
+    button { padding: 10px 16px; font-size: 11px; letter-spacing: 1px; }
+    thead th { padding: 7px 6px; font-size: 8px; letter-spacing: 1px; }
+    tbody td { padding: 7px 6px; font-size: 11px; }
+    td.dn { width: 58px; font-size: 11px; }
+    tbody tr.today td.dn::after { content: ""; }
+    tbody tr.today td.dn { text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: 3px; }
+    .pill { display: block; width: max-content; margin: 0 0 3px; }
+    .desc { font-size: 8.5px; }
+    .chk { width: 24px; height: 24px; line-height: 21px; font-size: 13px; margin-left: 4px; }
+    .standing { font-size: 10px; }
+    .jrow { gap: 8px; }
+    .noteinput { width: 100%; }
+    .invgrid { grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+    .invrow { font-size: 10.5px; }
+    .invrow input { width: 54px; }
+    .supgrid { grid-template-columns: 1fr; }
+    .fact { font-size: 13px; }
+  }
 
   .facts {
     border: 1px solid rgba(201,162,90,0.35);
@@ -270,6 +334,7 @@
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="supplier-data.js"></script>
 </head>
 <body>
 
@@ -319,10 +384,10 @@
 
     <div class="panel" id="result" style="display:none">
       <div class="stamp" id="stamp"></div>
-      <table>
+      <div class="tablewrap"><table>
         <thead><tr><th>Day</th><th>Day</th><th>Night</th><th id="lateHead">Late (only if needed)</th></tr></thead>
         <tbody id="tbody"></tbody>
-      </table>
+      </table></div>
       <div class="standing" id="standing">
         <span class="chk" id="kavaChk" title="took a kava gummy tonight">&#10003;</span>
         <span class="pill py">KAVA</span><b>Standing evening option, any night:</b> 1&ndash;2 kava gummies as wanted. No rotation needed. Take it instead of that night's Late red, or alongside a smaller one. Not before driving; skip when drinking. Tap the circle when you take one.
@@ -356,6 +421,14 @@
       <h2>Inventory &mdash; shared, in capsules / gummies</h2>
       <div class="invgrid" id="invGrid"></div>
       <div class="invnote">Check-offs subtract automatically (Day &amp; Night &minus;3, Late &minus;2, Kava &minus;1). LOW = under ~5 servings left.</div>
+    </div>
+
+    <div class="panel supplier" id="supPanel">
+      <h2>Supplier &mdash; Super Speciosa</h2>
+      <div class="dealtoday" id="dealToday"></div>
+      <div class="supgrid" id="supGrid"></div>
+      <div class="supdeals" id="supDeals"></div>
+      <div class="supfoot"><span id="supStamp"></span><button id="supRefresh">Refresh prices</button></div>
     </div>
 
     <div class="panel facts">
@@ -392,6 +465,20 @@
   var WHITES = ["WT","WMD"];
   var SERVING = { day: 3, night: 3, late: 2 }; // KAVA overrides to 1
   var LOW_AT = { default: 15, KAVA: 5 };
+  var SITE = "https://superspeciosa.com";
+  var SUPPLIER = {   // product handles on superspeciosa.com
+    WT:  "white-thai-kratom-capsules",
+    WMD: "white-maeng-da-kratom-capsules",
+    SR:  "super-speciosa-kratom-capsules",
+    GMD: "green-maeng-da-kratom-capsules",
+    GMal:"green-malay-kratom-capsules",
+    GB:  "premium-bali-kratom-capsules",
+    RMD: "red-maeng-da-kratom-capsules",
+    RB:  "red-bali-kratom-capsules",
+    RBo: "red-borneo-kratom-capsules",
+    SPR: "super-red-kratom-capsules",
+    KAVA:"lemon-lime-kava-gummies"
+  };
 
   var FACTS = [
     "Kratom is a cousin of coffee &mdash; both belong to the Rubiaceae plant family. The pick-me-up runs in the bloodline.",
@@ -653,12 +740,17 @@
     var slot = el.getAttribute("data-slot");
     var key = el.getAttribute("data-key");
     if (!p.checks[d]) p.checks[d] = {};
-    var nowOn = !p.checks[d][slot];
-    p.checks[d][slot] = nowOn;
-    var amt = servingFor(slot, key);
     if (state.inventory[key] === undefined) state.inventory[key] = 0;
-    state.inventory[key] += nowOn ? -amt : amt;
-    if (state.inventory[key] < 0) state.inventory[key] = 0;
+    var cur = p.checks[d][slot];
+    if (!cur){
+      // only subtract what is actually there, and remember it so unchecking gives back exactly that
+      var take = Math.min(servingFor(slot, key), state.inventory[key]);
+      state.inventory[key] -= take;
+      p.checks[d][slot] = { on: true, took: take };
+    } else {
+      state.inventory[key] += (cur.took !== undefined) ? cur.took : servingFor(slot, key);
+      delete p.checks[d][slot];
+    }
     saveState();
     renderWeek();
     renderInventory();
@@ -668,11 +760,16 @@
     var p = P();
     var d = new Date().getDay();
     if (!p.checks[d]) p.checks[d] = {};
-    var nowOn = !p.checks[d].kava;
-    p.checks[d].kava = nowOn;
     if (state.inventory.KAVA === undefined) state.inventory.KAVA = 0;
-    state.inventory.KAVA += nowOn ? -1 : 1;
-    if (state.inventory.KAVA < 0) state.inventory.KAVA = 0;
+    var cur = p.checks[d].kava;
+    if (!cur){
+      var take = Math.min(1, state.inventory.KAVA);
+      state.inventory.KAVA -= take;
+      p.checks[d].kava = { on: true, took: take };
+    } else {
+      state.inventory.KAVA += (cur.took !== undefined) ? cur.took : 1;
+      delete p.checks[d].kava;
+    }
     saveState();
     renderWeek();
     renderInventory();
@@ -692,6 +789,7 @@
         '</span><input type="number" min="0" step="1" value="' + count + '" data-key="' + k + '">';
       g.appendChild(row);
     });
+    renderSupplier();
   }
   document.getElementById("invGrid").addEventListener("change", function(e){
     var el = e.target;
@@ -704,6 +802,24 @@
   });
 
   // ---------- journal ----------
+  // What went into today: checked-off doses if any, otherwise the scheduled ones.
+  function strainsTakenToday(p){
+    var d = new Date().getDay();
+    var checks = p.checks[d] || {};
+    var out = [];
+    if (p.week){
+      var slots = ["day","night"].concat(p.hasLate ? ["late"] : []);
+      var checked = slots.filter(function(sl){ return !!checks[sl]; });
+      (checked.length ? checked : slots).forEach(function(sl){
+        var k = p.week[d][sl]; if (k && out.indexOf(k) === -1) out.push(k);
+      });
+    }
+    if (checks.kava) out.push("KAVA");
+    return out;
+  }
+  function strainNames(keys){
+    return (keys || []).map(function(k){ return S[k] ? S[k].name : k; }).join(", ");
+  }
   function renderJournal(){
     var p = P();
     var panel = document.getElementById("journalPanel");
@@ -723,7 +839,8 @@
       div.innerHTML = '<span class="jd">' + k + '</span>' +
         (en.buzz ? ' buzz <b>' + en.buzz + '</b>' : '') +
         (en.sleep ? ' &middot; sleep <b>' + en.sleep + '</b>' : '') +
-        (en.note ? ' &middot; ' + en.note.replace(/</g,"&lt;") : '');
+        (en.note ? ' &middot; ' + en.note.replace(/</g,"&lt;") : '') +
+        (en.strains && en.strains.length ? '<div class="jstrains">' + strainNames(en.strains) + '</div>' : '');
       h.appendChild(div);
     });
     // trend: avg buzz of last 5 vs previous 5
@@ -739,6 +856,23 @@
         trendEl.textContent = "Buzz ratings trending down — classic tolerance signal. Consider a break day or shaking up the rotation before raising anything.";
       }
     }
+    // per-strain: which strains sit well below your overall average
+    var per = {};
+    all.forEach(function(k){
+      var en = p.journal[k]; var b = +en.buzz || 0;
+      if (!b || !en.strains) return;
+      en.strains.forEach(function(sk){ if (sk !== "KAVA" && S[sk]){ (per[sk] = per[sk] || []).push(b); } });
+    });
+    if (buzzes.length >= 4){
+      var overall = buzzes.reduce(function(x,y){return x+y;},0) / buzzes.length;
+      var fading = Object.keys(per).filter(function(sk){
+        var a = per[sk].reduce(function(x,y){return x+y;},0) / per[sk].length;
+        return per[sk].length >= 3 && a <= overall - 0.8;
+      }).map(function(sk){ return S[sk].name; });
+      if (fading.length){
+        trendEl.textContent += (trendEl.textContent ? " " : "") + "Fading for you: " + fading.join(", ") + ". Rotate those out for a week.";
+      }
+    }
   }
   document.getElementById("jsave").addEventListener("click", function(){
     var p = P();
@@ -747,10 +881,176 @@
     var sleep = document.getElementById("jsleep").value;
     var note = document.getElementById("jnote").value.trim();
     if (!buzz && !sleep && !note){ delete p.journal[tk]; }
-    else p.journal[tk] = { buzz: buzz, sleep: sleep, note: note };
+    else p.journal[tk] = { buzz: buzz, sleep: sleep, note: note, strains: strainsTakenToday(p) };
     saveState();
     renderJournal();
   });
+
+  // ---------- supplier ----------
+  var SNAP = (typeof window.SUPPLIER_SNAPSHOT === "object" && window.SUPPLIER_SNAPSHOT) ? window.SUPPLIER_SNAPSHOT : null;
+
+  function parseCatalog(json){
+    var byHandle = {};
+    (json.products || []).forEach(function(pr){ byHandle[pr.handle] = pr; });
+    var out = {};
+    Object.keys(SUPPLIER).forEach(function(k){
+      var pr = byHandle[SUPPLIER[k]];
+      if (!pr) return;
+      out[k] = { title: pr.title, variants: pr.variants.map(function(v){
+        var m = /(\d+)\s*count/i.exec(v.title || "");
+        return { id: v.id, title: v.title, count: m ? +m[1] : null, price: +v.price,
+                 compareAt: v.compare_at_price ? +v.compare_at_price : null, available: !!v.available };
+      }) };
+    });
+    return out;
+  }
+  function snapshotProducts(){
+    if (!SNAP || !SNAP.products) return null;
+    var out = {};
+    Object.keys(SUPPLIER).forEach(function(k){ if (SNAP.products[SUPPLIER[k]]) out[k] = SNAP.products[SUPPLIER[k]]; });
+    return out;
+  }
+  function fetchLivePrices(){
+    var stamp = document.getElementById("supStamp");
+    stamp.textContent = "Fetching prices…";
+    return fetch(SITE + "/products.json?limit=250", { mode: "cors" })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        state.supplier = { fetchedAt: new Date().toISOString(), products: parseCatalog(j) };
+        saveState();
+        renderSupplier();
+      })
+      .catch(function(){
+        renderSupplier();
+        var el = document.getElementById("supStamp");
+        el.textContent = "Couldn't reach the supplier (offline?). " + el.textContent;
+      });
+  }
+  function weeklyUsage(){
+    var use = {};
+    Object.keys(state.profiles).forEach(function(id){
+      var p = state.profiles[id]; if (!p.week) return;
+      p.week.forEach(function(d){
+        use[d.day]   = (use[d.day]   || 0) + SERVING.day;
+        use[d.night] = (use[d.night] || 0) + SERVING.night;
+        if (p.hasLate && d.late) use[d.late] = (use[d.late] || 0) + SERVING.late;
+      });
+    });
+    return use;
+  }
+  function promosFor(handle){
+    if (!SNAP || !SNAP.promos) return [];
+    var now = Date.now();
+    return SNAP.promos.filter(function(pm){
+      var hits = (pm.products || []).some(function(x){ return x.handle === handle; });
+      var ends = pm.endsAt ? Date.parse(pm.endsAt) : null;
+      return hits && (!ends || ends > now);
+    });
+  }
+  function promoState(pm){
+    var now = Date.now(), st = pm.startsAt ? Date.parse(pm.startsAt) : 0, en = pm.endsAt ? Date.parse(pm.endsAt) : Infinity;
+    return now >= st && now < en ? "active" : now < st ? "upcoming" : "ended";
+  }
+  // promo windows are set in the store's Eastern time (they start at 04:00Z), so show them that way
+  function shortDate(iso){
+    try { return new Date(iso).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "numeric", day: "numeric" }); }
+    catch(e){ var d = new Date(iso); return (d.getMonth()+1) + "/" + d.getDate(); }
+  }
+  function money(n){ return "$" + n.toFixed(2); }
+
+  function renderSupplier(){
+    var products = (state.supplier && state.supplier.products) || snapshotProducts() || {};
+    var use = weeklyUsage();
+    var g = document.getElementById("supGrid");
+    g.innerHTML = "";
+    var stockUp = [];
+    ORDER.forEach(function(k){
+      var pr = products[k];
+      var inv = state.inventory[k] || 0;
+      var perDay = k === "KAVA" ? 1 : (use[k] || 0) / 7;
+      var days = perDay > 0 ? Math.floor(inv / perDay) : null;
+      var row = document.createElement("div");
+      row.className = "suprow";
+      var left = '<span><span class="nm">' + S[k].name + '</span>';
+      var promos = promosFor(SUPPLIER[k]);
+      var active = promos.filter(function(pm){ return promoState(pm) === "active"; })[0];
+      var soon = promos.filter(function(pm){ return promoState(pm) === "upcoming"; })[0];
+      if (active) left += '<span class="tag sale">' + (active.percent ? active.percent + "% off today" : "on sale") + '</span>';
+      else if (soon) left += '<span class="tag soon">' + (soon.percent ? soon.percent + "% off " : "deal ") + shortDate(soon.startsAt) + '</span>';
+      if (days !== null){
+        left += '<span class="tag days' + (days < 10 ? " short" : "") + '">~' + days + ' days left</span>';
+        if (days < 14 && (active || soon)) stockUp.push({ k: k, pm: active || soon, days: days });
+      }
+      left += '</span>';
+      var right = "";
+      if (pr){
+        var base = pr.variants.slice().sort(function(a,b){ return (a.count||0) - (b.count||0); })[0];
+        var big = pr.variants.slice().sort(function(a,b){ return (b.count||0) - (a.count||0); })[0];
+        var onSale = pr.variants.some(function(v){ return v.compareAt && v.compareAt > v.price; });
+        var allOut = pr.variants.every(function(v){ return !v.available; });
+        var someOut = !allOut && pr.variants.some(function(v){ return !v.available; });
+        var meta = "";
+        if (base){
+          meta += money(base.price) + " / " + base.count;
+          if (base.count) meta += " (" + (base.price / base.count * 100).toFixed(1) + "\u00a2 ea)";
+          if (big && big !== base && big.count) meta += " \u00b7 " + money(big.price) + " / " + big.count + " (" + (big.price / big.count * 100).toFixed(1) + "\u00a2 ea)";
+        }
+        right = '<span class="meta">' + meta + '</span>' +
+          (onSale ? '<span class="tag sale">marked down</span>' : "") +
+          (allOut ? '<span class="tag out">out of stock</span>' : someOut ? '<span class="tag out">some sizes out</span>' : "") +
+          ' <a href="' + SITE + "/products/" + SUPPLIER[k] + '" target="_blank" rel="noopener">Reorder</a>';
+      } else {
+        right = '<span class="meta">no price data</span> <a href="' + SITE + "/products/" + SUPPLIER[k] + '" target="_blank" rel="noopener">Reorder</a>';
+      }
+      row.innerHTML = left + right;
+      g.appendChild(row);
+    });
+
+    // stock-up nudge
+    var dt = document.getElementById("dealToday");
+    if (stockUp.length){
+      dt.innerHTML = stockUp.map(function(x){
+        var pm = x.pm, st = promoState(pm);
+        return "<b>" + S[x.k].name + "</b> is at ~" + x.days + " days and is " +
+          (st === "active" ? "<b>" + pm.percent + "% off today</b> (ends " + shortDate(pm.endsAt) + ")" : "<b>" + pm.percent + "% off on " + shortDate(pm.startsAt) + "</b>") + ".";
+      }).join("<br>");
+    } else dt.innerHTML = "";
+
+    // deal calendar
+    var dl = document.getElementById("supDeals");
+    dl.innerHTML = "";
+    if (SNAP && SNAP.promos && SNAP.promos.length){
+      var h3 = document.createElement("h3"); h3.textContent = "Deal calendar"; dl.appendChild(h3);
+      SNAP.promos.forEach(function(pm){
+        var st = promoState(pm); if (st === "ended") return;
+        var names = (pm.products || []).map(function(x){
+          var key = Object.keys(SUPPLIER).filter(function(k){ return SUPPLIER[k] === x.handle; })[0];
+          return key ? S[key].name : null;
+        }).filter(Boolean);
+        var others = (pm.products || []).filter(function(x){ return !Object.keys(SUPPLIER).some(function(k){ return SUPPLIER[k] === x.handle; }); }).length;
+        var div = document.createElement("div");
+        div.className = "deal " + st;
+        div.innerHTML = '<span class="dd">' + shortDate(pm.startsAt) + (pm.endsAt ? "\u2013" + shortDate(new Date(Date.parse(pm.endsAt) - 60000).toISOString()) : "") + '</span>' +
+          "<b>" + pm.title + "</b>" + (st === "active" ? ' <span class="tag sale">live now</span>' : "") +
+          (names.length ? " \u00b7 " + names.join(", ") + (others ? " + " + others + " other" + (others > 1 ? "s" : "") : "") : "");
+        dl.appendChild(div);
+      });
+      if (SNAP.freeShipping){
+        var fs = document.createElement("div"); fs.className = "deal"; fs.innerHTML = '<span class="dd">always</span>' + SNAP.freeShipping.replace(/</g,"&lt;");
+        dl.appendChild(fs);
+      }
+    } else {
+      dl.innerHTML = '<h3>Deal calendar</h3><div class="deal">No deal calendar loaded. Run <b>node refresh-supplier.js</b> in the app folder to fetch it.</div>';
+    }
+
+    var stamp = document.getElementById("supStamp");
+    var parts = [];
+    if (state.supplier && state.supplier.fetchedAt) parts.push("prices live as of " + new Date(state.supplier.fetchedAt).toLocaleString());
+    else if (SNAP && SNAP.fetchedAt) parts.push("prices from snapshot " + new Date(SNAP.fetchedAt).toLocaleDateString());
+    if (SNAP && SNAP.fetchedAt) parts.push("deals as of " + new Date(SNAP.fetchedAt).toLocaleDateString());
+    stamp.textContent = parts.join(" \u00b7 ");
+  }
+  document.getElementById("supRefresh").addEventListener("click", fetchLivePrices);
 
   // ---------- controls ----------
   var slider = document.getElementById("spectrum");
@@ -959,10 +1259,13 @@
     renderProfileBar();
     renderWeek();
     renderJournal();
-    renderInventory();
+    renderInventory();   // also renders the supplier panel
   }
   syncControls();
   renderAll();
+  // refresh live prices at most once a day
+  var lastFetch = state.supplier && state.supplier.fetchedAt ? Date.parse(state.supplier.fetchedAt) : 0;
+  if (Date.now() - lastFetch > 86400000) fetchLivePrices();
 })();
 </script>
 </body>
