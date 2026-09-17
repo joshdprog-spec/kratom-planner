@@ -17,11 +17,13 @@ const CAPS = [
   "red-maeng-da-kratom-capsules", "red-bali-kratom-capsules", "red-borneo-kratom-capsules",
   "super-red-kratom-capsules"
 ];
-// every capsule strain also sells as powder under the same handle stem
-const HANDLES = CAPS.concat(CAPS.map(function (h) { return h.replace("-capsules", "-powder"); }), ["lemon-lime-kava-gummies"]);
+// every capsule strain also sells as powder under the same handle stem; six also sell as tablets
+const TABLETS = ["white-thai-kratom-tablets", "white-maeng-da-kratom-tablets", "green-maeng-da-kratom-tablets",
+                 "green-bali-kratom-tablets", "red-maeng-da-kratom-tablets", "red-bali-kratom-tablets"];
+const HANDLES = CAPS.concat(CAPS.map(function (h) { return h.replace("-capsules", "-powder"); }), TABLETS, ["lemon-lime-kava-gummies"]);
 
-// A variant's size in capsule-equivalents (1 capsule = 500 mg, so 1 g = 2).
-function parseVariant(v) {
+// A variant's size in capsule-equivalents (1 capsule = 500 mg, so 1 g = 2; a 300 mg tablet = 0.6).
+function parseVariant(v, handle) {
   const t = v.title || "";
   const mc = /(\d+)\s*count/i.exec(t);
   const mg = /(\d+(?:\.\d+)?)\s*(kilograms?|kg|g)\b/i.exec(t);
@@ -29,7 +31,9 @@ function parseVariant(v) {
   if (mc) { count = Number(mc[1]); label = count + "ct"; }
   else if (mg) {
     grams = Number(mg[1]) * (/^k/i.test(mg[2]) ? 1000 : 1);
-    count = grams * 2; form = "powder"; label = grams + "g powder";
+    count = grams * 2;
+    if (/-tablets$/.test(handle || "")) { form = "tabs"; label = Math.round(grams / 0.3) + " tablets (" + grams + "g)"; }
+    else { form = "powder"; label = grams + "g powder"; }
   }
   return {
     id: v.id, title: t, form: form, count: count, grams: grams, label: label,
@@ -123,7 +127,7 @@ async function main() {
   const products = {};
   (catalog.products || []).forEach(function (p) {
     if (HANDLES.indexOf(p.handle) === -1) return;
-    products[p.handle] = { title: p.title, variants: p.variants.map(parseVariant) };
+    products[p.handle] = { title: p.title, variants: p.variants.map(function (v) { return parseVariant(v, p.handle); }) };
   });
 
   // subscription plans (Subscribe & Save) from each product's .js endpoint

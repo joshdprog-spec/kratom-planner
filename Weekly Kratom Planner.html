@@ -266,7 +266,11 @@
   .invsub { text-align: center; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--cream-dim); margin: 14px 0 4px; }
   .hint:empty { display: none; }
   .invrow .pair { display: inline-flex; align-items: center; gap: 5px; font-size: 9.5px; color: var(--cream-dim); white-space: nowrap; flex-shrink: 0; }
-  .invrow .pair .pair { margin-left: 10px; }
+  .invrow .pair .pair { margin-left: 8px; }
+  .invrow input { width: 62px; }
+  .placerow { display: flex; gap: 10px 18px; justify-content: center; align-items: center; flex-wrap: wrap; font-size: 10.5px; color: var(--cream-dim); margin: 0 0 12px; }
+  .placerow label { display: inline-flex; align-items: center; gap: 5px; }
+  .tag.pool { background: rgba(255,255,255,0.08); color: var(--cream-dim); }
   .invrow .low { display: inline-block; }
   .invrow input {
     width: 72px; text-align: right; flex-shrink: 0;
@@ -555,6 +559,14 @@
 
     <div class="panel inventory" id="invPanel" data-view="stock">
       <h2>Inventory &mdash; what's on the shelf</h2>
+      <div class="placerow">
+        <span>Where doses happen:</span>
+        <label>Day <select id="placeDay"><option value="away">on the go</option><option value="home">at home</option></select></label>
+        <label>Night <select id="placeNight"><option value="home">at home</option><option value="away">on the go</option></select></label>
+        <label>Late <select id="placeLate"><option value="home">at home</option><option value="away">on the go</option></select></label>
+        <label>On the go, prefer <select id="awayForm"><option value="caps">capsules</option><option value="tabs">tablets</option></select></label>
+        <label>At home, buy <select id="homeForm"><option value="any">whatever is cheapest</option><option value="powder">powder</option><option value="caps">capsules</option><option value="tabs">tablets</option></select></label>
+      </div>
       <div class="orow stockrow">
         <label>Strain <select id="stkKey"></select></label>
         <label>Container <select id="stkSize"></select></label>
@@ -571,7 +583,7 @@
       <div class="hint" id="invHint"></div>
       <div class="invsub">Estimate on hand</div>
       <div class="invgrid" id="invGrid"></div>
-      <div class="invnote">Add each bottle or bag above and the app keeps this estimate: it burns down every day from the schedule, kava at its nightly setting, and orders you log arrive after the lead time. The numbers are capsules (kava: gummies); 1 cap = 0.5 g, so powder shows in grams too. Overwrite a number any time a bottle looks different.</div>
+      <div class="invnote">Each strain is tracked per form: capsules, powder (grams) and tablets. One serving is 3 capsules, 1.5 g of powder or 5 tablets (300 mg each). On-the-go doses burn capsules or tablets; at-home doses burn powder first. Orders you log arrive after the lead time. Overwrite a number any time a container looks different.</div>
     </div>
 
     <div class="panel orders" id="ordPanel" data-view="stock">
@@ -650,16 +662,25 @@
     SPR: "super-red-kratom-capsules",
     KAVA:"lemon-lime-kava-gummies"
   };
-  // every capsule strain also sells as powder under the same handle stem
+  // every capsule strain also sells as powder under the same handle stem; six also sell as tablets
   function powderHandle(k){ return k === "KAVA" ? null : SUPPLIER[k].replace("-capsules", "-powder"); }
-  // a store variant's size in capsule-equivalents (1 capsule = 500 mg, so 1 g = 2)
-  function parseVariant(v){
+  var TABLETS = { WT: "white-thai-kratom-tablets", WMD: "white-maeng-da-kratom-tablets", GMD: "green-maeng-da-kratom-tablets",
+                  GB: "green-bali-kratom-tablets", RMD: "red-maeng-da-kratom-tablets", RB: "red-bali-kratom-tablets" };
+  function tabletHandle(k){ return TABLETS[k] || null; }
+  var FORMS = { caps: "capsules", powder: "powder", tabs: "tablets" };
+  var TAB_CE = 0.6;   // one 300 mg tablet in capsule-equivalents
+  // a store variant's size in capsule-equivalents (1 capsule = 500 mg, so 1 g = 2; a tablet is 0.6)
+  function parseVariant(v, hint){
     var t = v.title || "";
     var mc = /(\d+)\s*count/i.exec(t);
     var mg = /(\d+(?:\.\d+)?)\s*(kilograms?|kg|g)\b/i.exec(t);
     var form = "caps", count = null, grams = null, label = t;
     if (mc){ count = +mc[1]; label = count + "ct"; }
-    else if (mg){ grams = parseFloat(mg[1]) * (/^k/i.test(mg[2]) ? 1000 : 1); count = grams * 2; form = "powder"; label = grams + "g powder"; }
+    else if (mg){
+      grams = parseFloat(mg[1]) * (/^k/i.test(mg[2]) ? 1000 : 1); count = grams * 2;
+      if (hint === "tabs"){ form = "tabs"; label = Math.round(grams / 0.3) + " tablets (" + grams + "g)"; }
+      else { form = "powder"; label = grams + "g powder"; }
+    }
     return { id: v.id, title: t, form: form, count: count, grams: grams, label: label, price: +v.price,
              compareAt: v.compare_at_price ? +v.compare_at_price : (v.compareAt || null), available: !!v.available };
   }
@@ -698,6 +719,15 @@
     if (!st.orders) st.orders = [];
     if (!st.tracked) st.tracked = {};
     if (st.kavaNightly === undefined) st.kavaNightly = 1;
+    if (!st.place) st.place = { day: "away", night: "home", late: "home" };
+    if (!st.awayForm) st.awayForm = "caps";
+    if (!st.homeForm) st.homeForm = "any";
+    // per-form stock in capsule-equivalents; older totals are assumed to be capsules
+    if (!st.stock) st.stock = {};
+    Object.keys(st.inventory || {}).forEach(function(k){
+      if (!st.stock[k]) st.stock[k] = { caps: st.inventory[k] || 0, powder: 0, tabs: 0 };
+    });
+    Object.keys(st.stock).forEach(function(k){ st.inventory[k] = Math.round((st.stock[k].caps || 0) + (st.stock[k].powder || 0) + (st.stock[k].tabs || 0)); });
     // anything with stock, or ever ordered, counts as tracked
     Object.keys(st.inventory || {}).forEach(function(k){ if (st.inventory[k] > 0) st.tracked[k] = true; });
     st.orders.forEach(function(o){ st.tracked[o.key] = true; });
@@ -945,6 +975,22 @@
 
   // ---------- week table + check-offs ----------
   function servingFor(slot, key, p){ return key === "KAVA" ? 1 : ((p || P()).breakWeek ? 2 : SERVING[slot]); }
+  function stockOf(k){ if (!state.stock[k]) state.stock[k] = { caps: 0, powder: 0, tabs: 0 }; return state.stock[k]; }
+  function syncTotal(k){ var st = stockOf(k); state.inventory[k] = Math.max(0, Math.round((st.caps||0) + (st.powder||0) + (st.tabs||0))); }
+  function addStock(k, form, ce){ var st = stockOf(k); st[form] = Math.max(0, (st[form] || 0) + ce); syncTotal(k); }
+  // take `ce` from the pools in the given order; whatever can't be covered is simply gone (you improvised)
+  function takeStock(k, ce, order){
+    var st = stockOf(k), left = ce;
+    order.forEach(function(f){ if (left <= 0) return; var t = Math.min(st[f] || 0, left); st[f] = (st[f] || 0) - t; left -= t; });
+    syncTotal(k);
+  }
+  function poolOrder(place){
+    var portable = state.awayForm === "tabs" ? ["tabs", "caps"] : ["caps", "tabs"];
+    if (place === "away") return portable.concat(["powder"]);
+    if (state.homeForm === "caps") return ["caps", "tabs", "powder"];
+    if (state.homeForm === "tabs") return ["tabs", "caps", "powder"];
+    return ["powder"].concat(portable);
+  }
 
   function renderWeek(){
     var p = P();
@@ -1019,18 +1065,18 @@
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
   }
   function dailyServings(dateKey){
-    // scheduled capsules per strain on that calendar day, both profiles
+    // scheduled capsule-equivalents per strain on that calendar day, both profiles, split by where they happen
     var out = {};
+    function add(k, n, place){ if (!out[k]) out[k] = { away: 0, home: 0 }; out[k][place] += n; }
     var wd = new Date(dateKey + "T12:00:00").getDay();
     Object.keys(state.profiles).forEach(function(id){
       var p = state.profiles[id]; if (!p.week) return;
       var day = p.week[wd];
-      var amt = p.breakWeek ? 2 : SERVING.day;
-      out[day.day] = (out[day.day] || 0) + amt;
-      out[day.night] = (out[day.night] || 0) + (p.breakWeek ? 2 : SERVING.night);
-      if (effLate(p) && day.late) out[day.late] = (out[day.late] || 0) + (p.breakWeek ? 2 : SERVING.late);
+      add(day.day, p.breakWeek ? 2 : SERVING.day, state.place.day);
+      add(day.night, p.breakWeek ? 2 : SERVING.night, state.place.night);
+      if (effLate(p) && day.late) add(day.late, p.breakWeek ? 2 : SERVING.late, state.place.late);
     });
-    if (state.kavaNightly > 0) out.KAVA = (out.KAVA || 0) + state.kavaNightly;
+    if (state.kavaNightly > 0) add("KAVA", state.kavaNightly, "away");   // gummies are portable; keep them in one pool
     return out;
   }
   function applyBurnAndArrivals(){
@@ -1042,7 +1088,8 @@
     while (d <= yesterday && guard++ < 400){
       var use = dailyServings(d);
       Object.keys(use).forEach(function(k){
-        state.inventory[k] = Math.max(0, (state.inventory[k] || 0) - use[k]);
+        if (use[k].away) takeStock(k, use[k].away, poolOrder("away"));
+        if (use[k].home) takeStock(k, use[k].home, poolOrder("home"));
       });
       state.burn.lastDate = d; changed = true;
       d = addDays(d, 1);
@@ -1053,19 +1100,20 @@
       if (o.applied) return;
       var arrives = addDays(o.date, state.leadDays);
       if (arrives <= today){
-        state.inventory[o.key] = (state.inventory[o.key] || 0) + o.size * o.qty;
+        addStock(o.key, o.form || "caps", o.size * o.qty);
         o.applied = true; changed = true;
       }
     });
     if (changed) saveState();
   }
-  function incomingFor(k){
-    return state.orders.filter(function(o){ return o.key === k && !o.applied; })
+  function incomingFor(k, forms){
+    return state.orders.filter(function(o){ return o.key === k && !o.applied && (!forms || forms.indexOf(o.form || "caps") !== -1); })
       .reduce(function(a, o){ return a + o.size * o.qty; }, 0);
   }
 
   // ---------- inventory ----------
   function renderInventory(){
+    syncPlaceControls();
     var g = document.getElementById("invGrid");
     g.innerHTML = "";
     ORDER.forEach(function(k){
@@ -1074,8 +1122,10 @@
       var tracked = !!state.tracked[k];
       var row = document.createElement("div");
       row.className = "invrow" + (tracked ? "" : " quiet");
-      var inputs = '<span class="pair"><input type="number" min="0" step="1" value="' + count + '" data-key="' + k + '" data-unit="caps"> ' + (k === "KAVA" ? 'gummies' : 'caps') + '</span>';
-      if (k !== "KAVA") inputs += '<span class="pair"><input type="number" min="0" step="0.5" value="' + (count / 2) + '" data-key="' + k + '" data-unit="g"> g</span>';
+      var st = stockOf(k);
+      var inputs = '<span class="pair"><input type="number" min="0" step="1" value="' + Math.round(st.caps || 0) + '" data-key="' + k + '" data-unit="caps"> ' + (k === "KAVA" ? 'gummies' : 'caps') + '</span>';
+      if (k !== "KAVA") inputs += '<span class="pair"><input type="number" min="0" step="0.5" value="' + ((st.powder || 0) / 2) + '" data-key="' + k + '" data-unit="g"> g</span>';
+      if (tabletHandle(k)) inputs += '<span class="pair"><input type="number" min="0" step="1" value="' + Math.round((st.tabs || 0) / TAB_CE) + '" data-key="' + k + '" data-unit="tabs"> tabs</span>';
       row.innerHTML = '<span>' + S[k].name.replace(" (1)","") +
         (tracked && count < lowAt && !incomingFor(k) ? '<span class="low">LOW</span>' : '') +
         '</span><span class="pair">' + inputs + '</span>';
@@ -1092,7 +1142,7 @@
     if (!ks.options.length) ORDER.forEach(function(kk){ var o = document.createElement("option"); o.value = kk; o.textContent = S[kk].name; ks.appendChild(o); });
     var key = ks.value;
     var ss = document.getElementById("stkSize"); var keep = ss.value; ss.innerHTML = "";
-    sizesFor(key).forEach(function(x){ var o = document.createElement("option"); o.value = x.id; o.textContent = x.label.replace("ct", " count").replace("powder", "bag"); ss.appendChild(o); });
+    sizesFor(key).forEach(function(x){ var o = document.createElement("option"); o.value = x.id; o.textContent = x.label.replace(/ct$/, " count bottle").replace("powder", "bag"); ss.appendChild(o); });
     if (keep && [].some.call(ss.options, function(o){ return o.value === keep; })) ss.value = keep;
   }
   document.getElementById("stkKey").addEventListener("change", fillStockForm);
@@ -1104,7 +1154,7 @@
     var fill = parseFloat(document.getElementById("stkFill").value || "1");
     if (!sz) return;
     var add = Math.round(sz.count * qty * fill);
-    state.inventory[key] = (state.inventory[key] || 0) + add;
+    addStock(key, sz.form || "caps", add);
     state.tracked[key] = true;
     saveState();
     document.getElementById("stkQty").value = 1;
@@ -1131,7 +1181,11 @@
     if (el.tagName !== "INPUT") return;
     var k = el.getAttribute("data-key");
     var raw = Math.max(0, parseFloat(el.value || "0") || 0);
-    state.inventory[k] = el.getAttribute("data-unit") === "g" ? Math.round(raw * 2) : Math.round(raw);
+    var unit = el.getAttribute("data-unit"), st = stockOf(k);
+    if (unit === "g") st.powder = Math.round(raw * 2);
+    else if (unit === "tabs") st.tabs = Math.round(raw * TAB_CE * 10) / 10;
+    else st.caps = Math.round(raw);
+    syncTotal(k);
     state.tracked[k] = true;
     saveState();
     renderInventory();
@@ -1235,31 +1289,30 @@
   // ---------- supplier ----------
   var SNAP = (typeof window.SUPPLIER_SNAPSHOT === "object" && window.SUPPLIER_SNAPSHOT) ? window.SUPPLIER_SNAPSHOT : null;
 
-  function mergeForms(k, caps, powder){
-    if (!caps && !powder) return null;
+  function mergeForms(k, caps, powder, tabs){
+    if (!caps && !powder && !tabs) return null;
     var vs = [];
-    if (caps) vs = vs.concat(caps.variants.map(function(v){ return v.form ? v : parseVariant(v); }));
-    if (powder) vs = vs.concat(powder.variants.map(function(v){ return v.form ? v : parseVariant(v); }));
-    return { title: (caps || powder).title, variants: vs };
+    if (caps) vs = vs.concat(caps.variants.map(function(v){ return v.form ? v : parseVariant(v, "caps"); }));
+    if (powder) vs = vs.concat(powder.variants.map(function(v){ return v.form ? v : parseVariant(v, "powder"); }));
+    if (tabs) vs = vs.concat(tabs.variants.map(function(v){ return v.form === "tabs" ? v : parseVariant(v, "tabs"); }));
+    return { title: (caps || powder || tabs).title, variants: vs };
+  }
+  function productsFrom(lookup){
+    var out = {};
+    Object.keys(SUPPLIER).forEach(function(k){
+      var m = mergeForms(k, lookup(SUPPLIER[k]), powderHandle(k) ? lookup(powderHandle(k)) : null, tabletHandle(k) ? lookup(tabletHandle(k)) : null);
+      if (m) out[k] = m;
+    });
+    return out;
   }
   function parseCatalog(json){
     var byHandle = {};
     (json.products || []).forEach(function(pr){ byHandle[pr.handle] = pr; });
-    var out = {};
-    Object.keys(SUPPLIER).forEach(function(k){
-      var m = mergeForms(k, byHandle[SUPPLIER[k]], powderHandle(k) ? byHandle[powderHandle(k)] : null);
-      if (m) out[k] = m;
-    });
-    return out;
+    return productsFrom(function(h){ return byHandle[h]; });
   }
   function snapshotProducts(){
     if (!SNAP || !SNAP.products) return null;
-    var out = {};
-    Object.keys(SUPPLIER).forEach(function(k){
-      var m = mergeForms(k, SNAP.products[SUPPLIER[k]], powderHandle(k) ? SNAP.products[powderHandle(k)] : null);
-      if (m) out[k] = m;
-    });
-    return out;
+    return productsFrom(function(h){ return SNAP.products[h]; });
   }
   function fetchLivePrices(){
     var stamp = document.getElementById("supStamp");
@@ -1267,7 +1320,7 @@
     return fetch(SITE + "/products.json?limit=250", { mode: "cors" })
       .then(function(r){ return r.json(); })
       .then(function(j){
-        state.supplier = { v: 2, fetchedAt: new Date().toISOString(), products: parseCatalog(j) };
+        state.supplier = { v: 3, fetchedAt: new Date().toISOString(), products: parseCatalog(j) };
         saveState();
         renderSupplier();
       })
@@ -1277,18 +1330,45 @@
         el.textContent = "Couldn't reach the supplier (offline?). " + el.textContent;
       });
   }
+  // weekly capsule-equivalents per strain: total, and split into on-the-go / at-home
   function weeklyUsage(){
     var use = {};
+    function add(k, n, place){ if (!use[k]) use[k] = { total: 0, away: 0, home: 0 }; use[k].total += n; use[k][place] += n; }
     Object.keys(state.profiles).forEach(function(id){
       var p = state.profiles[id]; if (!p.week) return;
       p.week.forEach(function(d){
-        use[d.day]   = (use[d.day]   || 0) + (p.breakWeek ? 2 : SERVING.day);
-        use[d.night] = (use[d.night] || 0) + (p.breakWeek ? 2 : SERVING.night);
-        if (effLate(p) && d.late) use[d.late] = (use[d.late] || 0) + (p.breakWeek ? 2 : SERVING.late);
+        add(d.day, p.breakWeek ? 2 : SERVING.day, state.place.day);
+        add(d.night, p.breakWeek ? 2 : SERVING.night, state.place.night);
+        if (effLate(p) && d.late) add(d.late, p.breakWeek ? 2 : SERVING.late, state.place.late);
       });
     });
-    if (state.kavaNightly > 0) use.KAVA = state.kavaNightly * 7;
+    if (state.kavaNightly > 0) add("KAVA", state.kavaNightly * 7, "away");
     return use;
+  }
+  // the two stock pools of a strain with their daily demand. Powder only serves at-home doses; if there is
+  // no powder, the portable pool covers everything.
+  function poolsFor(k, use){
+    var u = use[k] || { total: 0, away: 0, home: 0 };
+    var st = stockOf(k);
+    var portable = (st.caps || 0) + (st.tabs || 0), powder = st.powder || 0;
+    var portableForms = k === "KAVA" ? ["caps"] : (state.awayForm === "tabs" ? ["tabs", "caps"] : ["caps", "tabs"]);
+    var homeForms = state.homeForm === "any" ? ["powder", "caps", "tabs"] : [state.homeForm];
+    var out = [];
+    if (k === "KAVA"){
+      if (u.total > 0) out.push({ name: "", label: "", forms: ["caps"], stock: portable + powder, perDay: u.total / 7, buyForms: ["caps"] });
+      return out;
+    }
+    var homeDaily = u.home / 7, awayDaily = u.away / 7;
+    var powderServesHome = powder > 0 && state.homeForm !== "caps" && state.homeForm !== "tabs";
+    if (powderServesHome){
+      if (awayDaily > 0) out.push({ name: "portable", label: "on the go", forms: ["caps", "tabs"], stock: portable, perDay: awayDaily, buyForms: [portableForms[0]] , altForms: [portableForms[1]] });
+      if (homeDaily > 0) out.push({ name: "home", label: "at home", forms: ["powder"], stock: powder, perDay: homeDaily, buyForms: homeForms });
+    } else {
+      if (awayDaily + homeDaily > 0) out.push({ name: "portable", label: homeDaily > 0 && awayDaily > 0 ? "all doses" : (awayDaily > 0 ? "on the go" : "at home"),
+        forms: ["caps", "tabs", "powder"], stock: portable + powder, perDay: awayDaily + homeDaily,
+        buyForms: awayDaily > 0 ? [portableForms[0]] : homeForms, altForms: awayDaily > 0 ? [portableForms[1]].concat(homeDaily > 0 ? ["powder"] : []) : [] });
+    }
+    return out;
   }
   function promosFor(handle){
     if (!SNAP || !SNAP.promos) return [];
@@ -1320,12 +1400,8 @@
     var suggested = {};
     ORDER.forEach(function(k){
       var pr = products[k];
-      var inv = state.inventory[k] || 0;
-      var incoming = incomingFor(k);
       var tracked = !!state.tracked[k];
-      var perDay = (use[k] || 0) / 7;
-      var days = tracked && perDay > 0 ? Math.floor(inv / perDay) : null;
-      var daysWithIncoming = perDay > 0 ? Math.floor((inv + incoming) / perDay) : null;
+      var perDay = ((use[k] && use[k].total) || 0) / 7;
       var row = document.createElement("div");
       row.className = "suprow" + (tracked ? "" : " quiet");
       var left = '<span><span class="nm">' + S[k].name + '</span>';
@@ -1334,28 +1410,44 @@
       var soon = promos.filter(function(pm){ return promoState(pm) === "upcoming"; })[0];
       if (active) left += '<span class="tag sale">' + (active.percent ? active.percent + "% off today" : "on sale") + '</span>';
       else if (soon) left += '<span class="tag soon">' + (soon.percent ? soon.percent + "% off " : "deal ") + shortDate(soon.startsAt) + '</span>';
-      if (incoming) left += '<span class="tag incoming">+' + incoming + ' on its way</span>';
-      if (days !== null){
-        left += '<span class="tag days' + (days < LEAD_BUFFER() ? " short" : "") + '">~' + days + ' days left</span>';
-        // reorder decision, lead time included
-        var deadline = LEAD_BUFFER();                       // must order by the time this many days are left
+      var pools = tracked ? poolsFor(k, use) : [];
+      var days = null;   // the tighter pool decides the row's urgency
+      suggested[k] = [];
+      pools.forEach(function(pool){
+        var incoming = incomingFor(k, pool.forms);
+        var pdays = Math.floor(pool.stock / pool.perDay);
+        var pdaysIn = Math.floor((pool.stock + incoming) / pool.perDay);
+        if (days === null || pdays < days) days = pdays;
+        var tagLabel = (pool.label ? pool.label + " " : "") + "~" + pdays + "d";
+        left += '<span class="tag days' + (pdays < LEAD_BUFFER() ? " short" : "") + '" title="' + Math.round(pool.stock) + ' capsule-equivalents at ' + (pool.perDay * 7).toFixed(0) + '/week">' + tagLabel + '</span>';
+        if (incoming) left += '<span class="tag incoming">+' + Math.round(incoming) + ' on its way</span>';
+        var deadline = LEAD_BUFFER();
         var saleInDays = soon ? Math.ceil((Date.parse(soon.startsAt) - Date.now()) / 86400000) : null;
-        if (daysWithIncoming <= deadline && !incoming){
-          if (active) { left += '<span class="tag now">order today \u2014 on sale</span>'; stockUp.push({ k:k, kind:"now-sale", pm:active, days:days }); }
-          else if (soon && saleInDays !== null && saleInDays + state.leadDays <= days) { left += '<span class="tag wait">order on ' + shortDate(soon.startsAt) + '</span>'; stockUp.push({ k:k, kind:"wait", pm:soon, days:days }); }
-          else { left += '<span class="tag now">order now</span>'; stockUp.push({ k:k, kind:"now", pm:soon||null, days:days }); }
-        } else if (soon && saleInDays !== null && daysWithIncoming - saleInDays <= deadline + 14 && daysWithIncoming - saleInDays >= 0){
-          left += '<span class="tag wait">stock up ' + shortDate(soon.startsAt) + '</span>';
-          stockUp.push({ k:k, kind:"stockup", pm:soon, days:days });
+        var kind = null;
+        if (pdaysIn <= deadline && !incoming){
+          if (active) kind = "now-sale";
+          else if (soon && saleInDays !== null && saleInDays + state.leadDays <= pdays) kind = "wait";
+          else kind = "now";
+        } else if (soon && saleInDays !== null && pdaysIn - saleInDays <= deadline + 14 && pdaysIn - saleInDays >= 0) kind = "stockup";
+        var bb = bestBuy(k, pool.perDay, soon, pdays, pool.buyForms);
+        var alt = pool.altForms && pool.altForms.length ? bestBuy(k, pool.perDay, soon, pdays, pool.altForms) : null;
+        suggested[k].push({ pool: pool, pick: bb ? bb.pick : null, bb: bb, alt: alt ? alt.pick : null });
+        if (kind){
+          if (kind === "now-sale") left += '<span class="tag now">order today \u2014 on sale</span>';
+          else if (kind === "now") left += '<span class="tag now">order now</span>';
+          else if (kind === "wait") left += '<span class="tag wait">order on ' + shortDate(soon.startsAt) + '</span>';
+          else left += '<span class="tag wait">stock up ' + shortDate(soon.startsAt) + '</span>';
+          stockUp.push({ k: k, kind: kind, pm: kind === "now-sale" ? active : soon || null, days: pdays, pool: pool, pick: bb ? bb.pick : null });
         }
-      }
+      });
       left += '</span>';
       var right = "";
       if (pr){
-        var servingCe = k === "KAVA" ? 1 : 3;   // 3 caps = 1.5 g
+        var servingCe = k === "KAVA" ? 1 : 3;   // 3 caps = 1.5 g = 5 tablets
         function perServing(v){ return v.price / v.count * servingCe; }
         var capsV = pr.variants.filter(function(v){ return v.form === "caps" && v.count; });
         var powV  = pr.variants.filter(function(v){ return v.form === "powder" && v.count; });
+        var tabV  = pr.variants.filter(function(v){ return v.form === "tabs" && v.count; });
         var onSale = pr.variants.some(function(v){ return v.compareAt && v.compareAt > v.price; });
         var allOut = pr.variants.every(function(v){ return !v.available; });
         var someOut = !allOut && pr.variants.some(function(v){ return !v.available; });
@@ -1367,23 +1459,30 @@
           var fits = list.filter(function(v){ return v.count <= Math.max(need90, floor); });
           return (fits.length ? fits : list).slice().sort(function(a,b){ return perServing(a) - perServing(b); })[0];
         }
-        var bestCaps = cheapest(capsV), bestPow = cheapest(powV);
+        var bestCaps = cheapest(capsV), bestPow = cheapest(powV), bestTab = cheapest(tabV);
         if (bestCaps) meta += (k === "KAVA" ? "" : "caps ") + money(bestCaps.price) + " / " + bestCaps.label + " (" + (perServing(bestCaps)*100).toFixed(0) + "\u00a2 a serving)";
         if (bestPow)  meta += (meta ? " \u00b7 " : "") + "powder " + money(bestPow.price) + " / " + bestPow.label + " (" + (perServing(bestPow)*100).toFixed(0) + "\u00a2 a serving)";
+        if (bestTab)  meta += (meta ? " \u00b7 " : "") + "tablets " + money(bestTab.price) + " / " + bestTab.label + " (" + (perServing(bestTab)*100).toFixed(0) + "\u00a2 a serving)";
         // suggested size: cheapest per unit among sizes you'd use within ~90 days
         var need = perDay > 0 ? perDay * 90 : 0;
         var sized = pr.variants.filter(function(v){ return v.count && v.available; });
         var fit = sized.filter(function(v){ return v.count <= Math.max(need, Math.min.apply(null, sized.map(function(x){ return x.count; }))); });
         var pickV = (fit.length ? fit : sized).slice().sort(function(a,b){ return a.price/a.count - b.price/b.count; })[0];
-        var bb = tracked ? bestBuy(k, perDay, soon, days) : null;
-        suggested[k] = bb ? bb.pick : (pickV ? { kind: "one", v: pickV, label: pickV.label + " one-time", cashNow: pickV.price, link: SITE + "/cart/" + pickV.id + ":1" } : null);
+        var buttons = "";
+        var picks = suggested[k].filter(function(x){ return x.pick; });
+        if (!picks.length && pickV) picks = [{ pool: { label: "" }, pick: { kind: "one", v: pickV, label: pickV.label + " one-time", cashNow: pickV.price, link: SITE + "/cart/" + pickV.id + ":1" } }];
+        picks.forEach(function(x){
+          var o = x.pick;
+          buttons += ' <a class="cart' + (o.kind === "sub" ? " sub" : "") + '" href="' + o.link + '" target="_blank" rel="noopener" title="' + (o.kind === "sub" ? "Opens a cart with the subscription selected" : "Opens a cart with this item") + '">' +
+            (x.pool.label && picks.length > 1 ? x.pool.label + ": " : "") +
+            (o.kind === "sub" ? "Subscribe " + o.v.label + " " + o.plan.name + " \u00b7 " + money(o.cashNow) : "Add " + o.v.label + " \u00b7 " + money(o.cashNow)) + '</a>' +
+            ' <a class="pg logit" href="#ordPanel" data-key="' + k + '" data-vid="' + o.v.id + '">log order</a>';
+        });
         right = '<span class="meta">' + meta + '</span>' +
           (onSale ? '<span class="tag sale">marked down</span>' : "") +
           (allOut ? '<span class="tag out">out of stock</span>' : someOut ? '<span class="tag out">some sizes out</span>' : "") +
-          (suggested[k] ? ' <a class="cart' + (suggested[k].kind === "sub" ? " sub" : "") + '" href="' + suggested[k].link + '" target="_blank" rel="noopener" title="' + (suggested[k].kind === "sub" ? "Opens a cart with the subscription selected" : "Opens a cart with this item") + '">' +
-              (suggested[k].kind === "sub" ? "Subscribe " + suggested[k].v.label + " " + suggested[k].plan.name + " \u00b7 " + money(suggested[k].cashNow) : "Add " + suggested[k].v.label + " \u00b7 " + money(suggested[k].cashNow)) + '</a>' : "") +
-          ' <a class="pg" href="' + SITE + "/products/" + SUPPLIER[k] + '" target="_blank" rel="noopener">page</a>' +
-          (suggested[k] ? ' <a class="pg logit" href="#ordPanel" data-key="' + k + '" data-vid="' + suggested[k].v.id + '">log order</a>' : "");
+          buttons +
+          ' <a class="pg" href="' + SITE + "/products/" + SUPPLIER[k] + '" target="_blank" rel="noopener">page</a>';
       } else {
         right = '<span class="meta">no price data</span> <a href="' + SITE + "/products/" + SUPPLIER[k] + '" target="_blank" rel="noopener">Reorder</a>';
       }
@@ -1399,12 +1498,13 @@
       var html = '<div class="rt">Suggested orders</div>' +
                  '<div class="rn">Recommendations from your stock, your week and ' + state.leadDays + '-day shipping. Nothing has been ordered.</div>';
       stockUp.forEach(function(x){
-        var pm = x.pm, name = "<b>" + S[x.k].name + "</b>", why;
-        if (x.kind === "now-sale") why = name + ": about " + x.days + " days left and " + pm.percent + "% off today \u2014 <b>order today</b>.";
-        else if (x.kind === "now") why = name + ": about " + x.days + " days left \u2014 <b>order now</b>" + (pm ? " (the " + pm.percent + "% sale on " + shortDate(pm.startsAt) + " comes too late)" : "") + ".";
-        else if (x.kind === "wait") why = name + ": about " + x.days + " days left, enough to <b>wait for " + pm.percent + "% off on " + shortDate(pm.startsAt) + "</b> and order that day.";
-        else why = name + ": about " + x.days + " days left; <b>" + pm.percent + "% off on " + shortDate(pm.startsAt) + "</b> lands about when you'd reorder \u2014 stock up that day.";
-        var sv = suggested[x.k];
+        var pm = x.pm, name = "<b>" + S[x.k].name + "</b>" + (x.pool && x.pool.label ? " (" + x.pool.label + ")" : ""), why;
+        var what = x.pool && x.pool.label === "at home" ? " of home stock" : x.pool && x.pool.label === "on the go" ? " of portable stock" : "";
+        if (x.kind === "now-sale") why = name + ": about " + x.days + " days" + what + " left and " + pm.percent + "% off today \u2014 <b>order today</b>.";
+        else if (x.kind === "now") why = name + ": about " + x.days + " days" + what + " left \u2014 <b>order now</b>" + (pm ? " (the " + pm.percent + "% sale on " + shortDate(pm.startsAt) + " comes too late)" : "") + ".";
+        else if (x.kind === "wait") why = name + ": about " + x.days + " days" + what + " left, enough to <b>wait for " + pm.percent + "% off on " + shortDate(pm.startsAt) + "</b> and order that day.";
+        else why = name + ": about " + x.days + " days" + what + " left; <b>" + pm.percent + "% off on " + shortDate(pm.startsAt) + "</b> lands about when you'd reorder \u2014 stock up that day.";
+        var sv = x.pick;
         if (sv && sv.kind === "sub") why += " Cheapest over time is the <b>subscription, " + sv.v.label + " " + sv.plan.name + "</b> at " + money(sv.cashNow) + " a delivery.";
         else if (sv && sv.kind === "sale") why += " Buy the <b>" + sv.v.label + "</b> that day for about " + money(sv.cashNow) + ".";
         else if (sv) why += " Best buy: <b>" + sv.v.label + "</b> at " + money(sv.cashNow) + ".";
@@ -1472,11 +1572,11 @@
   //  cashNow  = what you pay at checkout today
   //  perServ  = cost per serving you'd actually take within the year; stock you wouldn't
   //             get through in a year is money tied up, not savings, so a huge lot scores badly
-  function buyOptions(k, perDay, soon, daysLeft){
+  function buyOptions(k, perDay, soon, daysLeft, forms){
     var pr = currentProducts()[k]; if (!pr || !(perDay > 0)) return [];
     var H = 365, need = perDay * H, servCe = k === "KAVA" ? 1 : 3;
     var opts = [];
-    pr.variants.filter(function(v){ return v.count && v.available; }).forEach(function(v){
+    pr.variants.filter(function(v){ return v.count && v.available && (!forms || forms.indexOf(v.form) !== -1); }).forEach(function(v){
       var used1 = Math.min(v.count, need);
       opts.push({ kind: "one", v: v, label: v.label + " one-time", cashNow: v.price, perServ: v.price / used1 * servCe,
                   coversDays: v.count / perDay, link: SITE + "/cart/" + v.id + ":1" });
@@ -1503,8 +1603,8 @@
     return opts;
   }
   // Joshua's rule: cheapest over time wins; anything within 5% of it is a tie, and the tie goes to the lowest price today.
-  function bestBuy(k, perDay, soon, daysLeft){
-    var opts = buyOptions(k, perDay, soon, daysLeft);
+  function bestBuy(k, perDay, soon, daysLeft, forms){
+    var opts = buyOptions(k, perDay, soon, daysLeft, forms);
     if (!opts.length) return null;
     var minServ = Math.min.apply(null, opts.map(function(o){ return o.perServ; }));
     var ties = opts.filter(function(o){ return o.perServ <= minServ * 1.05; });
@@ -1521,17 +1621,19 @@
 
   // ---------- orders ----------
   var SUB_DISCOUNT = 0.20;   // the store's Subscribe & Save rate
-  function liveProducts(){ return (state.supplier && state.supplier.v === 2 && state.supplier.products) || null; }
+  function liveProducts(){ return (state.supplier && state.supplier.v === 3 && state.supplier.products) || null; }
   function currentProducts(){ return liveProducts() || snapshotProducts() || {}; }
   function sizesFor(k){
     var pr = currentProducts()[k];
     var sizes = pr ? pr.variants.filter(function(v){ return v.count; }).map(function(v){ return { id: String(v.id), count: v.count, price: v.price, label: v.label, form: v.form }; }) : [];
     if (!sizes.length){
       var defs = k === "KAVA" ? [[30,"30ct","caps"],[60,"60ct","caps"],[90,"90ct","caps"]]
-                              : [[60,"60ct","caps"],[320,"320ct","caps"],[1000,"1000ct","caps"],[200,"100g powder","powder"],[500,"250g powder","powder"],[2000,"1000g powder","powder"]];
+                              : [[60,"60ct","caps"],[320,"320ct","caps"],[1000,"1000ct","caps"],[200,"100g powder","powder"],[500,"250g powder","powder"],[2000,"1000g powder","powder"]]
+                                .concat(tabletHandle(k) ? [[300,"500 tablets (150g)","tabs"],[2000,"3333 tablets (1000g)","tabs"]] : []);
       sizes = defs.map(function(d){ return { id: k + "-" + d[0] + d[2], count: d[0], price: null, label: d[1], form: d[2] }; });
     }
-    return sizes.sort(function(a,b){ return (a.form === b.form ? 0 : a.form === "caps" ? -1 : 1) || a.count - b.count; });
+    var rank = { caps: 0, powder: 1, tabs: 2 };
+    return sizes.sort(function(a,b){ return (rank[a.form] - rank[b.form]) || a.count - b.count; });
   }
   function unitList(k, count, label){
     var sz = sizesFor(k).filter(function(x){ return x.count === count && (!label || x.label === label); })[0];
@@ -1596,10 +1698,27 @@
     var id = el.getAttribute("data-id");
     var o = state.orders.filter(function(x){ return x.id === id; })[0];
     if (!o) return;
-    if (o.applied) state.inventory[o.key] = Math.max(0, (state.inventory[o.key] || 0) - o.size * o.qty);
+    if (o.applied) addStock(o.key, o.form || "caps", -(o.size * o.qty));
     state.orders = state.orders.filter(function(x){ return x.id !== id; });
     saveState(); renderOrders(); renderInventory();
   });
+  ["placeDay","placeNight","placeLate","awayForm","homeForm"].forEach(function(id){
+    document.getElementById(id).addEventListener("change", function(){
+      state.place.day = document.getElementById("placeDay").value;
+      state.place.night = document.getElementById("placeNight").value;
+      state.place.late = document.getElementById("placeLate").value;
+      state.awayForm = document.getElementById("awayForm").value;
+      state.homeForm = document.getElementById("homeForm").value;
+      saveState(); renderInventory();
+    });
+  });
+  function syncPlaceControls(){
+    document.getElementById("placeDay").value = state.place.day;
+    document.getElementById("placeNight").value = state.place.night;
+    document.getElementById("placeLate").value = state.place.late;
+    document.getElementById("awayForm").value = state.awayForm;
+    document.getElementById("homeForm").value = state.homeForm;
+  }
   document.getElementById("leadDays").addEventListener("change", function(){
     state.leadDays = Math.max(0, Math.min(30, parseInt(this.value || "7", 10)));
     applyBurnAndArrivals(); saveState(); renderOrders(); renderInventory();
@@ -1614,17 +1733,25 @@
     var lines = [];
     ORDER.forEach(function(k){
       if (!state.tracked[k]) return;
-      var perDay = (use[k] || 0) / 7;
-      if (!(perDay > 0)) return;
+      var pools = poolsFor(k, use);
+      if (!pools.length) return;
       var promos = promosFor(SUPPLIER[k]);
       var soon = promos.filter(function(pm){ return promoState(pm) === "upcoming"; })[0];
-      var inv = state.inventory[k] || 0, days = Math.floor(inv / perDay);
-      var bb = bestBuy(k, perDay, soon, days);
-      if (!bb) return;
-      var txt = '<b>' + S[k].name + '</b> \u00b7 ~' + (perDay * 7).toFixed(0) + (k === "KAVA" ? ' gummies' : ' caps') + '/week. ';
-      txt += '<span class="opt win">' + optText(bb.pick) + '<span class="tagw">pick</span></span>';
-      if (bb.cheapestNow !== bb.pick) txt += '<span class="opt">cheapest today: ' + optText(bb.cheapestNow) + '</span>';
-      if (bb.cheapestTime !== bb.pick && bb.cheapestTime !== bb.cheapestNow) txt += '<span class="opt">cheapest over time: ' + optText(bb.cheapestTime) + '</span>';
+      var txt = '<b>' + S[k].name + '</b>';
+      pools.forEach(function(pool){
+        var pdays = Math.floor(pool.stock / pool.perDay);
+        var bb = bestBuy(k, pool.perDay, soon, pdays, pool.buyForms);
+        if (!bb) return;
+        txt += '<div>' + (pool.label ? '<i>' + pool.label + '</i> \u00b7 ' : '') + '~' + (pool.perDay * 7).toFixed(0) + (k === "KAVA" ? ' gummies' : ' caps') + '-worth/week. ';
+        txt += '<span class="opt win">' + optText(bb.pick) + '<span class="tagw">pick</span></span>';
+        if (bb.cheapestNow !== bb.pick) txt += '<span class="opt">cheapest today: ' + optText(bb.cheapestNow) + '</span>';
+        if (bb.cheapestTime !== bb.pick && bb.cheapestTime !== bb.cheapestNow) txt += '<span class="opt">cheapest over time: ' + optText(bb.cheapestTime) + '</span>';
+        (pool.altForms || []).forEach(function(f){
+          var ab = bestBuy(k, pool.perDay, soon, pdays, [f]);
+          if (ab) txt += '<span class="opt">as ' + FORMS[f] + ': ' + optText(ab.pick) + '</span>';
+        });
+        txt += '</div>';
+      });
       var os = (byKey[k] || []).slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
       if (os.length >= 2){
         var spend = os.reduce(function(a,o){ return a + (o.paid||0); }, 0);
