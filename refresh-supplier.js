@@ -11,12 +11,32 @@ const fs = require("fs");
 const path = require("path");
 
 const SITE = "https://superspeciosa.com";
-const HANDLES = [
+const CAPS = [
   "white-thai-kratom-capsules", "white-maeng-da-kratom-capsules", "super-speciosa-kratom-capsules",
   "green-maeng-da-kratom-capsules", "green-malay-kratom-capsules", "premium-bali-kratom-capsules",
   "red-maeng-da-kratom-capsules", "red-bali-kratom-capsules", "red-borneo-kratom-capsules",
-  "super-red-kratom-capsules", "lemon-lime-kava-gummies"
+  "super-red-kratom-capsules"
 ];
+// every capsule strain also sells as powder under the same handle stem
+const HANDLES = CAPS.concat(CAPS.map(function (h) { return h.replace("-capsules", "-powder"); }), ["lemon-lime-kava-gummies"]);
+
+// A variant's size in capsule-equivalents (1 capsule = 500 mg, so 1 g = 2).
+function parseVariant(v) {
+  const t = v.title || "";
+  const mc = /(\d+)\s*count/i.exec(t);
+  const mg = /(\d+(?:\.\d+)?)\s*(kilograms?|kg|g)\b/i.exec(t);
+  let form = "caps", count = null, grams = null, label = t;
+  if (mc) { count = Number(mc[1]); label = count + "ct"; }
+  else if (mg) {
+    grams = Number(mg[1]) * (/^k/i.test(mg[2]) ? 1000 : 1);
+    count = grams * 2; form = "powder"; label = grams + "g powder";
+  }
+  return {
+    id: v.id, title: t, form: form, count: count, grams: grams, label: label,
+    price: Number(v.price), compareAt: v.compare_at_price ? Number(v.compare_at_price) : null,
+    available: !!v.available
+  };
+}
 const UA = { "user-agent": "Mozilla/5.0 (kratom-planner refresh script)" };
 
 function balanced(s, start, cap) {
@@ -103,17 +123,7 @@ async function main() {
   const products = {};
   (catalog.products || []).forEach(function (p) {
     if (HANDLES.indexOf(p.handle) === -1) return;
-    products[p.handle] = {
-      title: p.title,
-      variants: p.variants.map(function (v) {
-        const m = /(\d+)\s*count/i.exec(v.title || "");
-        return {
-          id: v.id, title: v.title, count: m ? Number(m[1]) : null,
-          price: Number(v.price), compareAt: v.compare_at_price ? Number(v.compare_at_price) : null,
-          available: !!v.available
-        };
-      })
-    };
+    products[p.handle] = { title: p.title, variants: p.variants.map(parseVariant) };
   });
 
   const out = { fetchedAt: new Date().toISOString(), site: SITE, freeShipping: freeShipping, promos: promos, products: products };

@@ -209,6 +209,7 @@
   /* inventory */
   .invgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 14px; }
   .invrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--cream); padding: 4px 0; }
+  .invrow .pair { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; color: var(--cream-dim); }
   .invrow input {
     width: 62px; text-align: right;
     font-family: inherit; font-size: 11px;
@@ -261,6 +262,37 @@
     background: transparent; color: var(--gold); border: 1px solid var(--gold-soft);
   }
   #supRefresh:hover { background: rgba(201,162,90,0.1); }
+  .tag.now { background: var(--red); color: #fff; }
+  .tag.wait { background: rgba(217,195,74,0.25); color: #d9c34a; border: 1px solid rgba(217,195,74,0.5); }
+  .tag.incoming { background: rgba(90,158,99,0.25); color: #9fd3a6; }
+
+  /* orders */
+  .orow { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; font-size: 11px; color: var(--cream-dim); }
+  .orow label { display: inline-flex; align-items: center; gap: 4px; }
+  .orow input[type=number], .orow input[type=date] {
+    font-family: inherit; font-size: 11px; background: #16301f; color: #f2ecdd;
+    border: 1px solid #2c4a35; border-radius: 6px; padding: 4px 6px; width: 74px;
+  }
+  .orow input[type=date] { width: 128px; }
+  #ordSave {
+    font-size: 10px; padding: 7px 16px; border-radius: 999px;
+    background: transparent; color: var(--gold); border: 1px solid var(--gold-soft);
+  }
+  #ordSave:hover { background: rgba(201,162,90,0.1); }
+  .olist { margin-top: 12px; font-size: 10.5px; color: var(--cream-dim); }
+  .olist div { padding: 4px 2px; border-top: 1px solid rgba(44,74,53,0.5); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .olist b { color: var(--cream); }
+  .olist .od { color: var(--gold); font-family: Georgia, serif; font-style: italic; }
+  .olist .x { margin-left: auto; cursor: pointer; color: var(--cream-dim); font-size: 12px; }
+  .olist .x:hover { color: var(--red); }
+  .subs { margin-top: 14px; font-size: 10.5px; color: var(--cream-dim); }
+  .subs h3 { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); margin: 0 0 6px; font-weight: 700; }
+  .subs div { padding: 4px 2px; border-top: 1px solid rgba(44,74,53,0.5); }
+  .subs b { color: var(--cream); }
+  .subs .yes { color: #9fd3a6; }
+  .subs .no { color: var(--cream-dim); }
+  .leadrow { text-align: center; font-size: 10px; color: var(--cream-dim); margin-top: 10px; }
+  .leadrow input { width: 44px; font-family: inherit; font-size: 10px; background: #16301f; color: #f2ecdd; border: 1px solid #2c4a35; border-radius: 6px; padding: 3px 5px; text-align: right; }
 
   /* mobile */
   @media (max-width: 640px) {
@@ -405,10 +437,10 @@
         <span class="pill py">KAVA</span><b>Standing evening option, any night:</b> 1&ndash;2 kava gummies as wanted. No rotation needed. Take it instead of that night's Late red, or alongside a smaller one. Not before driving; skip when drinking. Tap the circle when you take one.
       </div>
       <div class="rules">
-        <b>Servings:</b> 3 caps Day &middot; 3 caps Night &middot; 2&ndash;3 caps Late (only if needed) &middot; every dose &ge;6 hrs from the last.
+        <b>Servings:</b> 3 caps Day &middot; 3 caps Night &middot; 2&ndash;3 caps Late (only if needed) &middot; every dose &ge;6 hrs from the last. 1 cap = 500 mg, so 3 caps &asymp; 1.5 g powder &mdash; capsules and powder of a strain share one stock.
         <b>Kava Gummy:</b> 1 gummy = 50mg kavalactones. Calm only, no energy side. Nightly use is fine and it doesn't rotate &mdash; regular use strengthens it. Kava amplifies kratom, so never stack full servings of both. Label max 5/day; keep to 1&ndash;2 on kratom days.
         <b>Guarantees:</b> Signature Reserve exactly as many days as selected, never back to back &middot; no strain on consecutive days in the same column &middot; no red repeats within 24 hrs in any direction &middot; nothing twice in one day.
-        <b>Check-offs:</b> tap the circle on a dose when you take it &mdash; it logs it and subtracts from the shared inventory below.
+        <b>Check-offs:</b> tap the circle on a dose when you take it &mdash; it feeds the journal. Inventory assumes the schedule is followed and burns down on its own; kava burns from its check-off.
         <b>If effects feel dulled:</b> regenerate toward the other end of the spectrum or take a break day &mdash; never dose up.
       </div>
     </div>
@@ -432,7 +464,22 @@
     <div class="panel inventory" id="invPanel">
       <h2>Inventory &mdash; shared, in capsules / gummies</h2>
       <div class="invgrid" id="invGrid"></div>
-      <div class="invnote">Check-offs subtract automatically (Day &amp; Night &minus;3, Late &minus;2, Kava &minus;1). LOW = under ~5 servings left.</div>
+      <div class="invnote">Estimated stock on hand, in capsules or grams (1 cap = 0.5 g; either box updates the other). Burns down every day from the schedule (kava from its check-off). Orders you log below arrive after the lead time. Edit any number to correct it.</div>
+    </div>
+
+    <div class="panel orders" id="ordPanel">
+      <h2>Orders</h2>
+      <div class="orow">
+        <label>Strain <select id="ordKey"></select></label>
+        <label>Size <select id="ordSize"></select></label>
+        <label>Qty <input type="number" id="ordQty" min="1" step="1" value="1"></label>
+        <label>Paid $ <input type="number" id="ordPaid" min="0" step="0.01"></label>
+        <label>Date <input type="date" id="ordDate"></label>
+        <button id="ordSave">Log order</button>
+      </div>
+      <div class="leadrow">Orders take about <input type="number" id="leadDays" min="0" max="30" step="1"> days to arrive. Stock is counted on arrival.</div>
+      <div class="olist" id="ordList"></div>
+      <div class="subs" id="subsBox"></div>
     </div>
 
     <div class="panel supplier" id="supPanel">
@@ -491,6 +538,19 @@
     SPR: "super-red-kratom-capsules",
     KAVA:"lemon-lime-kava-gummies"
   };
+  // every capsule strain also sells as powder under the same handle stem
+  function powderHandle(k){ return k === "KAVA" ? null : SUPPLIER[k].replace("-capsules", "-powder"); }
+  // a store variant's size in capsule-equivalents (1 capsule = 500 mg, so 1 g = 2)
+  function parseVariant(v){
+    var t = v.title || "";
+    var mc = /(\d+)\s*count/i.exec(t);
+    var mg = /(\d+(?:\.\d+)?)\s*(kilograms?|kg|g)\b/i.exec(t);
+    var form = "caps", count = null, grams = null, label = t;
+    if (mc){ count = +mc[1]; label = count + "ct"; }
+    else if (mg){ grams = parseFloat(mg[1]) * (/^k/i.test(mg[2]) ? 1000 : 1); count = grams * 2; form = "powder"; label = grams + "g powder"; }
+    return { id: v.id, title: t, form: form, count: count, grams: grams, label: label, price: +v.price,
+             compareAt: v.compare_at_price ? +v.compare_at_price : (v.compareAt || null), available: !!v.available };
+  }
 
   var FACTS = [
     "Kratom is a cousin of coffee &mdash; both belong to the Rubiaceae plant family. The pick-me-up runs in the bloodline.",
@@ -523,6 +583,9 @@
   // bring older saved profiles up to date: sigTwice -> sigCount, and drop
   // any week generated when kava was still a rotation slot
   function normalize(st){
+    if (!st.orders) st.orders = [];
+    if (!st.burn) st.burn = { lastDate: todayKey() };
+    if (!st.leadDays && st.leadDays !== 0) st.leadDays = 7;
     Object.keys(st.profiles).forEach(function(id){
       var p = st.profiles[id];
       if (p.sigCount === undefined) p.sigCount = p.sigTwice ? 2 : 1;
@@ -597,6 +660,7 @@
         if (remote.updatedAt && state.updatedAt && remote.updatedAt < state.updatedAt){ dbDirty = true; flushDb(); return; }
         state = normalize(JSON.parse(JSON.stringify(remote)));
         saveLocal();
+        applyBurnAndArrivals();
         syncControls();
         renderAll();
         setSync("Synced across devices");
@@ -806,20 +870,10 @@
     var slot = el.getAttribute("data-slot");
     var key = el.getAttribute("data-key");
     if (!p.checks[d]) p.checks[d] = {};
-    if (state.inventory[key] === undefined) state.inventory[key] = 0;
-    var cur = p.checks[d][slot];
-    if (!cur){
-      // only subtract what is actually there, and remember it so unchecking gives back exactly that
-      var take = Math.min(servingFor(slot, key), state.inventory[key]);
-      state.inventory[key] -= take;
-      p.checks[d][slot] = { on: true, took: take };
-    } else {
-      state.inventory[key] += (cur.took !== undefined) ? cur.took : servingFor(slot, key);
-      delete p.checks[d][slot];
-    }
+    // check-offs record what you took for the journal; inventory burns from the schedule
+    if (p.checks[d][slot]) delete p.checks[d][slot]; else p.checks[d][slot] = { on: true };
     saveState();
     renderWeek();
-    renderInventory();
   });
 
   document.getElementById("kavaChk").addEventListener("click", function(){
@@ -841,6 +895,57 @@
     renderInventory();
   });
 
+  // ---------- inventory: automatic burn + arrivals ----------
+  function addDays(key, n){
+    var d = new Date(key + "T12:00:00"); d.setDate(d.getDate() + n);
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  function dailyServings(dateKey){
+    // scheduled capsules per strain on that calendar day, both profiles
+    var out = {};
+    var wd = new Date(dateKey + "T12:00:00").getDay();
+    Object.keys(state.profiles).forEach(function(id){
+      var p = state.profiles[id]; if (!p.week) return;
+      var day = p.week[wd];
+      var amt = p.breakWeek ? 2 : SERVING.day;
+      out[day.day] = (out[day.day] || 0) + amt;
+      out[day.night] = (out[day.night] || 0) + (p.breakWeek ? 2 : SERVING.night);
+      if (effLate(p) && day.late) out[day.late] = (out[day.late] || 0) + (p.breakWeek ? 2 : SERVING.late);
+    });
+    return out;
+  }
+  function applyBurnAndArrivals(){
+    var today = todayKey(), changed = false;
+    // burn every completed day since the last pass (never today: today's doses are still ahead)
+    var yesterday = addDays(today, -1);
+    var d = addDays(state.burn.lastDate, 1);
+    var guard = 0;
+    while (d <= yesterday && guard++ < 400){
+      var use = dailyServings(d);
+      Object.keys(use).forEach(function(k){
+        if (k === "KAVA") return;
+        state.inventory[k] = Math.max(0, (state.inventory[k] || 0) - use[k]);
+      });
+      state.burn.lastDate = d; changed = true;
+      d = addDays(d, 1);
+    }
+    if (state.burn.lastDate > yesterday){ state.burn.lastDate = yesterday; }
+    // orders arrive after the lead time
+    state.orders.forEach(function(o){
+      if (o.applied) return;
+      var arrives = addDays(o.date, state.leadDays);
+      if (arrives <= today){
+        state.inventory[o.key] = (state.inventory[o.key] || 0) + o.size * o.qty;
+        o.applied = true; changed = true;
+      }
+    });
+    if (changed) saveState();
+  }
+  function incomingFor(k){
+    return state.orders.filter(function(o){ return o.key === k && !o.applied; })
+      .reduce(function(a, o){ return a + o.size * o.qty; }, 0);
+  }
+
   // ---------- inventory ----------
   function renderInventory(){
     var g = document.getElementById("invGrid");
@@ -850,19 +955,25 @@
       var lowAt = k === "KAVA" ? LOW_AT.KAVA : LOW_AT.default;
       var row = document.createElement("div");
       row.className = "invrow";
+      var inputs = '<span class="pair"><input type="number" min="0" step="1" value="' + count + '" data-key="' + k + '" data-unit="caps"> ' + (k === "KAVA" ? 'gummies' : 'caps') + '</span>';
+      if (k !== "KAVA") inputs += '<span class="pair"><input type="number" min="0" step="0.5" value="' + (count / 2) + '" data-key="' + k + '" data-unit="g"> g</span>';
       row.innerHTML = '<span>' + S[k].name.replace(" (1)","") +
         (count > 0 && count < lowAt ? '<span class="low">LOW</span>' : '') +
-        '</span><input type="number" min="0" step="1" value="' + count + '" data-key="' + k + '">';
+        '</span><span class="pair">' + inputs + '</span>';
       g.appendChild(row);
     });
     renderSupplier();
   }
+  document.getElementById("supGrid").addEventListener("click", function(e){
+    var el = e.target; if (!el.classList || !el.classList.contains("logit")) return;
+    fillOrderForm(el.getAttribute("data-key"), el.getAttribute("data-vid"));
+  });
   document.getElementById("invGrid").addEventListener("change", function(e){
     var el = e.target;
     if (el.tagName !== "INPUT") return;
     var k = el.getAttribute("data-key");
-    var val = Math.max(0, parseInt(el.value || "0", 10));
-    state.inventory[k] = val;
+    var raw = Math.max(0, parseFloat(el.value || "0") || 0);
+    state.inventory[k] = el.getAttribute("data-unit") === "g" ? Math.round(raw * 2) : Math.round(raw);
     saveState();
     renderInventory();
   });
@@ -965,25 +1076,30 @@
   // ---------- supplier ----------
   var SNAP = (typeof window.SUPPLIER_SNAPSHOT === "object" && window.SUPPLIER_SNAPSHOT) ? window.SUPPLIER_SNAPSHOT : null;
 
+  function mergeForms(k, caps, powder){
+    if (!caps && !powder) return null;
+    var vs = [];
+    if (caps) vs = vs.concat(caps.variants.map(function(v){ return v.form ? v : parseVariant(v); }));
+    if (powder) vs = vs.concat(powder.variants.map(function(v){ return v.form ? v : parseVariant(v); }));
+    return { title: (caps || powder).title, variants: vs };
+  }
   function parseCatalog(json){
     var byHandle = {};
     (json.products || []).forEach(function(pr){ byHandle[pr.handle] = pr; });
     var out = {};
     Object.keys(SUPPLIER).forEach(function(k){
-      var pr = byHandle[SUPPLIER[k]];
-      if (!pr) return;
-      out[k] = { title: pr.title, variants: pr.variants.map(function(v){
-        var m = /(\d+)\s*count/i.exec(v.title || "");
-        return { id: v.id, title: v.title, count: m ? +m[1] : null, price: +v.price,
-                 compareAt: v.compare_at_price ? +v.compare_at_price : null, available: !!v.available };
-      }) };
+      var m = mergeForms(k, byHandle[SUPPLIER[k]], powderHandle(k) ? byHandle[powderHandle(k)] : null);
+      if (m) out[k] = m;
     });
     return out;
   }
   function snapshotProducts(){
     if (!SNAP || !SNAP.products) return null;
     var out = {};
-    Object.keys(SUPPLIER).forEach(function(k){ if (SNAP.products[SUPPLIER[k]]) out[k] = SNAP.products[SUPPLIER[k]]; });
+    Object.keys(SUPPLIER).forEach(function(k){
+      var m = mergeForms(k, SNAP.products[SUPPLIER[k]], powderHandle(k) ? SNAP.products[powderHandle(k)] : null);
+      if (m) out[k] = m;
+    });
     return out;
   }
   function fetchLivePrices(){
@@ -992,7 +1108,7 @@
     return fetch(SITE + "/products.json?limit=250", { mode: "cors" })
       .then(function(r){ return r.json(); })
       .then(function(j){
-        state.supplier = { fetchedAt: new Date().toISOString(), products: parseCatalog(j) };
+        state.supplier = { v: 2, fetchedAt: new Date().toISOString(), products: parseCatalog(j) };
         saveState();
         renderSupplier();
       })
@@ -1028,6 +1144,7 @@
     return now >= st && now < en ? "active" : now < st ? "upcoming" : "ended";
   }
   // promo windows are set in the store's Eastern time (they start at 04:00Z), so show them that way
+  function LEAD_BUFFER(){ return (state.leadDays || 0) + 3; }   // ship time plus a 3-day cushion
   function shortDate(iso){
     try { return new Date(iso).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "numeric", day: "numeric" }); }
     catch(e){ var d = new Date(iso); return (d.getMonth()+1) + "/" + d.getDate(); }
@@ -1035,7 +1152,7 @@
   function money(n){ return "$" + n.toFixed(2); }
 
   function renderSupplier(){
-    var products = (state.supplier && state.supplier.products) || snapshotProducts() || {};
+    var products = liveProducts() || snapshotProducts() || {};
     var use = weeklyUsage();
     var g = document.getElementById("supGrid");
     g.innerHTML = "";
@@ -1043,8 +1160,10 @@
     ORDER.forEach(function(k){
       var pr = products[k];
       var inv = state.inventory[k] || 0;
+      var incoming = incomingFor(k);
       var perDay = k === "KAVA" ? 1 : (use[k] || 0) / 7;
       var days = perDay > 0 ? Math.floor(inv / perDay) : null;
+      var daysWithIncoming = perDay > 0 ? Math.floor((inv + incoming) / perDay) : null;
       var row = document.createElement("div");
       row.className = "suprow";
       var left = '<span><span class="nm">' + S[k].name + '</span>';
@@ -1053,24 +1172,42 @@
       var soon = promos.filter(function(pm){ return promoState(pm) === "upcoming"; })[0];
       if (active) left += '<span class="tag sale">' + (active.percent ? active.percent + "% off today" : "on sale") + '</span>';
       else if (soon) left += '<span class="tag soon">' + (soon.percent ? soon.percent + "% off " : "deal ") + shortDate(soon.startsAt) + '</span>';
+      if (incoming) left += '<span class="tag incoming">+' + incoming + ' on its way</span>';
       if (days !== null){
-        left += '<span class="tag days' + (days < 10 ? " short" : "") + '">~' + days + ' days left</span>';
-        if (days < 14 && (active || soon)) stockUp.push({ k: k, pm: active || soon, days: days });
+        left += '<span class="tag days' + (days < LEAD_BUFFER() ? " short" : "") + '">~' + days + ' days left</span>';
+        // reorder decision, lead time included
+        var deadline = LEAD_BUFFER();                       // must order by the time this many days are left
+        var saleInDays = soon ? Math.ceil((Date.parse(soon.startsAt) - Date.now()) / 86400000) : null;
+        if (daysWithIncoming <= deadline && !incoming){
+          if (active) { left += '<span class="tag now">order today \u2014 on sale</span>'; stockUp.push({ k:k, kind:"now-sale", pm:active, days:days }); }
+          else if (soon && saleInDays !== null && saleInDays + state.leadDays <= days) { left += '<span class="tag wait">order on ' + shortDate(soon.startsAt) + '</span>'; stockUp.push({ k:k, kind:"wait", pm:soon, days:days }); }
+          else { left += '<span class="tag now">order now</span>'; stockUp.push({ k:k, kind:"now", pm:soon||null, days:days }); }
+        } else if (soon && saleInDays !== null && daysWithIncoming - saleInDays <= deadline + 14 && daysWithIncoming - saleInDays >= 0){
+          left += '<span class="tag wait">stock up ' + shortDate(soon.startsAt) + '</span>';
+          stockUp.push({ k:k, kind:"stockup", pm:soon, days:days });
+        }
       }
       left += '</span>';
       var right = "";
       if (pr){
-        var base = pr.variants.slice().sort(function(a,b){ return (a.count||0) - (b.count||0); })[0];
-        var big = pr.variants.slice().sort(function(a,b){ return (b.count||0) - (a.count||0); })[0];
+        var servingCe = k === "KAVA" ? 1 : 3;   // 3 caps = 1.5 g
+        function perServing(v){ return v.price / v.count * servingCe; }
+        var capsV = pr.variants.filter(function(v){ return v.form === "caps" && v.count; });
+        var powV  = pr.variants.filter(function(v){ return v.form === "powder" && v.count; });
         var onSale = pr.variants.some(function(v){ return v.compareAt && v.compareAt > v.price; });
         var allOut = pr.variants.every(function(v){ return !v.available; });
         var someOut = !allOut && pr.variants.some(function(v){ return !v.available; });
         var meta = "";
-        if (base){
-          meta += money(base.price) + " / " + base.count;
-          if (base.count) meta += " (" + (base.price / base.count * 100).toFixed(1) + "\u00a2 ea)";
-          if (big && big !== base && big.count) meta += " \u00b7 " + money(big.price) + " / " + big.count + " (" + (big.price / big.count * 100).toFixed(1) + "\u00a2 ea)";
+        var need90 = perDay > 0 ? perDay * 90 : 0;
+        function cheapest(list){
+          if (!list.length) return null;
+          var floor = Math.min.apply(null, list.map(function(x){ return x.count; }));
+          var fits = list.filter(function(v){ return v.count <= Math.max(need90, floor); });
+          return (fits.length ? fits : list).slice().sort(function(a,b){ return perServing(a) - perServing(b); })[0];
         }
+        var bestCaps = cheapest(capsV), bestPow = cheapest(powV);
+        if (bestCaps) meta += (k === "KAVA" ? "" : "caps ") + money(bestCaps.price) + " / " + bestCaps.label + " (" + (perServing(bestCaps)*100).toFixed(0) + "\u00a2 a serving)";
+        if (bestPow)  meta += (meta ? " \u00b7 " : "") + "powder " + money(bestPow.price) + " / " + bestPow.label + " (" + (perServing(bestPow)*100).toFixed(0) + "\u00a2 a serving)";
         // suggested size: cheapest per unit among sizes you'd use within ~90 days
         var need = perDay > 0 ? perDay * 90 : 0;
         var sized = pr.variants.filter(function(v){ return v.count && v.available; });
@@ -1079,8 +1216,9 @@
         right = '<span class="meta">' + meta + '</span>' +
           (onSale ? '<span class="tag sale">marked down</span>' : "") +
           (allOut ? '<span class="tag out">out of stock</span>' : someOut ? '<span class="tag out">some sizes out</span>' : "") +
-          (pickV ? ' <a class="cart" href="' + SITE + "/cart/" + pickV.id + ':1" target="_blank" rel="noopener" title="Opens a cart with this item">Add ' + pickV.count + 'ct \u00b7 ' + money(pickV.price) + '</a>' : "") +
-          ' <a class="pg" href="' + SITE + "/products/" + SUPPLIER[k] + '" target="_blank" rel="noopener">page</a>';
+          (pickV ? ' <a class="cart" href="' + SITE + "/cart/" + pickV.id + ':1" target="_blank" rel="noopener" title="Opens a cart with this item">Add ' + pickV.label + ' \u00b7 ' + money(pickV.price) + '</a>' : "") +
+          ' <a class="pg" href="' + SITE + "/products/" + SUPPLIER[k] + '" target="_blank" rel="noopener">page</a>' +
+          (pickV ? ' <a class="pg logit" href="#ordPanel" data-key="' + k + '" data-vid="' + pickV.id + '">log order</a>' : "");
       } else {
         right = '<span class="meta">no price data</span> <a href="' + SITE + "/products/" + SUPPLIER[k] + '" target="_blank" rel="noopener">Reorder</a>';
       }
@@ -1088,14 +1226,18 @@
       g.appendChild(row);
     });
 
-    // stock-up nudge
+    // reorder nudges (lead time of state.leadDays days + a small buffer)
     var dt = document.getElementById("dealToday");
     if (stockUp.length){
-      dt.innerHTML = stockUp.map(function(x){
-        var pm = x.pm, st = promoState(pm);
-        return "<b>" + S[x.k].name + "</b> is at ~" + x.days + " days and is " +
-          (st === "active" ? "<b>" + pm.percent + "% off today</b> (ends " + shortDate(pm.endsAt) + ")" : "<b>" + pm.percent + "% off on " + shortDate(pm.startsAt) + "</b>") + ".";
-      }).join("<br>");
+      var groups = { "now-sale": [], now: [], wait: [], stockup: [] };
+      stockUp.forEach(function(x){ groups[x.kind].push(x); });
+      function nm(x){ return "<b>" + S[x.k].name + "</b> (~" + x.days + "d)"; }
+      var lines = [];
+      if (groups["now-sale"].length) lines.push("<b>Order today, on sale:</b> " + groups["now-sale"].map(function(x){ return nm(x) + " " + x.pm.percent + "% off"; }).join(", ") + ".");
+      if (groups.now.length) lines.push("<b>Order now</b> (" + state.leadDays + " days shipping): " + groups.now.map(function(x){ return nm(x) + (x.pm ? " \u2014 the " + x.pm.percent + "% sale on " + shortDate(x.pm.startsAt) + " is too late" : ""); }).join(", ") + ".");
+      if (groups.wait.length) lines.push("<b>Wait for the sale:</b> " + groups.wait.map(function(x){ return nm(x) + " \u2192 " + x.pm.percent + "% off on " + shortDate(x.pm.startsAt); }).join(", ") + ".");
+      if (groups.stockup.length) lines.push("<b>Stock up on sale day:</b> " + groups.stockup.map(function(x){ return nm(x) + " \u2192 " + x.pm.percent + "% off on " + shortDate(x.pm.startsAt); }).join(", ") + ".");
+      dt.innerHTML = lines.join("<br>");
     } else dt.innerHTML = "";
 
     // deal calendar
@@ -1132,6 +1274,126 @@
     if (SNAP && SNAP.fetchedAt) parts.push("deals as of " + new Date(SNAP.fetchedAt).toLocaleDateString());
     stamp.textContent = parts.join(" \u00b7 ");
   }
+  // ---------- orders ----------
+  var SUB_DISCOUNT = 0.10;   // the store's stated subscribe-and-save rate
+  function liveProducts(){ return (state.supplier && state.supplier.v === 2 && state.supplier.products) || null; }
+  function currentProducts(){ return liveProducts() || snapshotProducts() || {}; }
+  function sizesFor(k){
+    var pr = currentProducts()[k];
+    var sizes = pr ? pr.variants.filter(function(v){ return v.count; }).map(function(v){ return { id: String(v.id), count: v.count, price: v.price, label: v.label, form: v.form }; }) : [];
+    if (!sizes.length){
+      var defs = k === "KAVA" ? [[30,"30ct","caps"],[60,"60ct","caps"],[90,"90ct","caps"]]
+                              : [[60,"60ct","caps"],[320,"320ct","caps"],[1000,"1000ct","caps"],[200,"100g powder","powder"],[500,"250g powder","powder"],[2000,"1000g powder","powder"]];
+      sizes = defs.map(function(d){ return { id: k + "-" + d[0] + d[2], count: d[0], price: null, label: d[1], form: d[2] }; });
+    }
+    return sizes.sort(function(a,b){ return (a.form === b.form ? 0 : a.form === "caps" ? -1 : 1) || a.count - b.count; });
+  }
+  function unitList(k, count, label){
+    var sz = sizesFor(k).filter(function(x){ return x.count === count && (!label || x.label === label); })[0];
+    return sz && sz.price ? sz.price : null;
+  }
+  function fillOrderForm(k, presetId){
+    var ks = document.getElementById("ordKey");
+    if (!ks.options.length) ORDER.forEach(function(kk){ var o = document.createElement("option"); o.value = kk; o.textContent = S[kk].name; ks.appendChild(o); });
+    if (k) ks.value = k;
+    var key = ks.value;
+    var ss = document.getElementById("ordSize"); ss.innerHTML = "";
+    sizesFor(key).forEach(function(x){ var o = document.createElement("option"); o.value = x.id; o.textContent = x.label + (x.price ? " \u00b7 $" + x.price.toFixed(2) : ""); ss.appendChild(o); });
+    if (presetId) ss.value = String(presetId);
+    if (!document.getElementById("ordDate").value) document.getElementById("ordDate").value = todayKey();
+    suggestPaid();
+  }
+  function chosenSize(){
+    var key = document.getElementById("ordKey").value;
+    var id = document.getElementById("ordSize").value;
+    return sizesFor(key).filter(function(x){ return x.id === id; })[0] || null;
+  }
+  function suggestPaid(){
+    var key = document.getElementById("ordKey").value;
+    var sz = chosenSize();
+    var qty = +document.getElementById("ordQty").value || 1;
+    var list = sz ? sz.price : null;
+    if (!list) return;
+    var active = promosFor(SUPPLIER[key]).filter(function(pm){ return promoState(pm) === "active"; })[0];
+    var price = list * qty * (active && active.percent ? 1 - active.percent/100 : 1);
+    document.getElementById("ordPaid").value = price.toFixed(2);
+  }
+  document.getElementById("ordKey").addEventListener("change", function(){ fillOrderForm(null, null); });
+  document.getElementById("ordSize").addEventListener("change", suggestPaid);
+  document.getElementById("ordQty").addEventListener("change", suggestPaid);
+  document.getElementById("ordSave").addEventListener("click", function(){
+    var key = document.getElementById("ordKey").value;
+    var sz = chosenSize();
+    var qty = Math.max(1, parseInt(document.getElementById("ordQty").value || "1", 10));
+    var paid = parseFloat(document.getElementById("ordPaid").value || "0") || 0;
+    var date = document.getElementById("ordDate").value || todayKey();
+    if (!key || !sz) return;
+    state.orders.push({ id: Date.now().toString(36), date: date, key: key, size: sz.count, label: sz.label, form: sz.form, qty: qty, paid: paid, applied: false });
+    state.orders.sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+    applyBurnAndArrivals();
+    saveState();
+    document.getElementById("ordPaid").value = "";
+    renderOrders(); renderInventory();
+  });
+  document.getElementById("ordList").addEventListener("click", function(e){
+    var el = e.target; if (!el.classList || !el.classList.contains("x")) return;
+    var id = el.getAttribute("data-id");
+    var o = state.orders.filter(function(x){ return x.id === id; })[0];
+    if (!o) return;
+    if (o.applied) state.inventory[o.key] = Math.max(0, (state.inventory[o.key] || 0) - o.size * o.qty);
+    state.orders = state.orders.filter(function(x){ return x.id !== id; });
+    saveState(); renderOrders(); renderInventory();
+  });
+  document.getElementById("leadDays").addEventListener("change", function(){
+    state.leadDays = Math.max(0, Math.min(30, parseInt(this.value || "7", 10)));
+    applyBurnAndArrivals(); saveState(); renderOrders(); renderInventory();
+  });
+
+  function renderOrders(){
+    fillOrderForm(null, null);
+    document.getElementById("leadDays").value = state.leadDays;
+    var L = document.getElementById("ordList"); L.innerHTML = "";
+    state.orders.slice().reverse().slice(0, 12).forEach(function(o){
+      var arrives = addDays(o.date, state.leadDays);
+      var div = document.createElement("div");
+      div.innerHTML = '<span class="od">' + o.date + '</span><b>' + S[o.key].name + '</b> ' + o.qty + ' \u00d7 ' + (o.label || (o.size + 'ct')) +
+        (o.paid ? ' \u00b7 $' + o.paid.toFixed(2) : '') +
+        (o.applied ? ' \u00b7 arrived' : ' \u00b7 arrives ' + arrives) +
+        '<span class="x" data-id="' + o.id + '" title="remove">\u2715</span>';
+      L.appendChild(div);
+    });
+    if (!state.orders.length) L.innerHTML = '<div>No orders logged yet. Log each order and the app learns your reorder rhythm.</div>';
+
+    // subscription verdict per strain
+    var box = document.getElementById("subsBox"); box.innerHTML = "";
+    var byKey = {};
+    state.orders.forEach(function(o){ (byKey[o.key] = byKey[o.key] || []).push(o); });
+    var lines = [];
+    Object.keys(byKey).forEach(function(k){
+      var os = byKey[k].slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+      var n = os.length;
+      if (n < 2) { lines.push('<div><b>' + S[k].name + '</b>: 1 order logged \u2014 need 3 to judge.</div>'); return; }
+      var gaps = []; for (var i = 1; i < n; i++) gaps.push((Date.parse(os[i].date) - Date.parse(os[i-1].date)) / 86400000);
+      var mean = gaps.reduce(function(a,b){return a+b;},0) / gaps.length;
+      var sd = Math.sqrt(gaps.reduce(function(a,b){ return a + (b-mean)*(b-mean); }, 0) / gaps.length);
+      var spend = os.reduce(function(a,o){ return a + (o.paid||0); }, 0);
+      var listTotal = os.reduce(function(a,o){ var u = unitList(o.key, o.size, o.label); return a + (u ? u * o.qty : (o.paid||0)); }, 0);
+      var captured = listTotal > 0 ? 1 - spend / listTotal : 0;
+      var perMonth = mean > 0 ? (spend / n) * (30 / mean) : 0;
+      var txt = '<b>' + S[k].name + '</b>: ' + n + ' orders, every ~' + Math.round(mean) + ' days, ~$' + perMonth.toFixed(0) + '/mo, sale savings ~' + Math.round(captured*100) + '%. ';
+      if (n < 3) txt += 'One more order and the app can judge a subscription.';
+      else if (captured >= SUB_DISCOUNT) txt += '<span class="no">Stay one-off \u2014 timing sales already beats the ' + Math.round(SUB_DISCOUNT*100) + '% subscription discount.</span>';
+      else if (sd / mean > 0.45) txt += '<span class="no">Too irregular for a subscription; keep ordering by the nudges.</span>';
+      else {
+        var weeks = Math.max(1, Math.round(mean / 7));
+        var save = perMonth * 12 * SUB_DISCOUNT;
+        txt += '<span class="yes">Subscribe every ' + weeks + ' week' + (weeks > 1 ? 's' : '') + ' \u2014 saves about $' + save.toFixed(0) + '/yr at ' + Math.round(SUB_DISCOUNT*100) + '% off.</span>';
+      }
+      lines.push('<div>' + txt + '</div>');
+    });
+    if (lines.length){ box.innerHTML = '<h3>Subscribe or not?</h3>' + lines.join(""); }
+  }
+
   document.getElementById("supRefresh").addEventListener("click", fetchLivePrices);
   if (IN_ARTIFACT) document.getElementById("supRefresh").style.display = "none";   // no cross-site fetch inside claude.ai
 
@@ -1345,13 +1607,15 @@
     renderProfileBar();
     renderWeek();
     renderJournal();
+    renderOrders();
     renderInventory();   // also renders the supplier panel
   }
+  applyBurnAndArrivals();
   syncControls();
   renderAll();
   // refresh live prices at most once a day
   var lastFetch = state.supplier && state.supplier.fetchedAt ? Date.parse(state.supplier.fetchedAt) : 0;
-  if (!IN_ARTIFACT && Date.now() - lastFetch > 86400000) fetchLivePrices();
+  if (!IN_ARTIFACT && (Date.now() - lastFetch > 86400000 || !liveProducts())) fetchLivePrices();
   connectDb();
 })();
 </script>

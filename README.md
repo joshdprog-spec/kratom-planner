@@ -28,4 +28,6 @@ A single-file app for planning a weekly Super Speciosa capsule rotation, trackin
 - **Super Speciosa Product Reference.md** is the product and house-rules reference the app is built from.
 - The two printable PDFs are fixed weekly sheets.
 
-Data (profiles, journal, inventory, cached prices) lives in the browser's local storage.
+**Inventory model.** Stock is tracked per strain in capsule-equivalents (1 capsule = 500 mg, so powder converts at 2 per gram; the inventory panel accepts either unit). The app assumes the schedule is followed and burns each day's servings automatically; check-offs only feed the journal (kava, which isn't scheduled, burns from its check-off). Log each order in the Orders panel: stock is added on the arrival date (lead time defaults to 7 days), reorder nudges account for shipping, and after three orders of a strain the app says whether a subscription would beat timing sales.
+
+Data (profiles, journal, inventory, orders, cached prices) lives in the browser's local storage, or in shared storage when running as the artifact.
