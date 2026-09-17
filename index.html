@@ -2,11 +2,315 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Weekly Kratom Planner</title>
-<meta http-equiv="refresh" content="0; url=Weekly%20Kratom%20Planner.html">
-<link rel="canonical" href="Weekly%20Kratom%20Planner.html">
+<meta name="description" content="A free planner for Super Speciosa customers: a weekly strain rotation, stock that burns down on its own, and buying advice that prices every size, subscription and sale. No account; your data stays in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Source+Sans+3:wght@400;500;600;700&display=swap">
+<script>try { if (localStorage.getItem("kratomPlannerTheme") === "light") document.documentElement.setAttribute("data-theme", "light"); } catch (e) {}</script>
+<script src="supplier-data.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0c1c13; --bg2: #10241a;
+    --card: #15291d; --card2: #1a3123;
+    --line: #27412f; --line-strong: #35553f;
+    --gold: #d1a95c; --gold-soft: #a8874a; --gold-ink: #14100a;
+    --ink: #f2ecdd; --ink-dim: #b3b8ad; --ink-faint: #7f887e;
+    --green: #5fa86a; --red: #d0664c; --yellow: #dcc457;
+    --tint-gold: rgba(209,169,92,0.12); --tint-green: rgba(95,168,106,0.16); --tint-ink: rgba(255,255,255,0.05); --tint-deep: rgba(0,0,0,0.22);
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    --glow-a: rgba(95,168,106,0.14); --glow-b: rgba(209,169,92,0.10);
+    --radius: 14px; --radius-s: 9px;
+    --serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    --sans: 'Source Sans 3', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f1ece0; --bg2: #e9e3d3;
+    --card: #fbf8f1; --card2: #f5f0e4;
+    --line: #d9d1bc; --line-strong: #c5bb9f;
+    --gold: #8f6f24; --gold-soft: #b08d3f; --gold-ink: #fffaf0;
+    --ink: #1e2a22; --ink-dim: #5b665d; --ink-faint: #8a9189;
+    --green: #3f7d49; --red: #b5533f; --yellow: #9c8320;
+    --tint-gold: rgba(143,111,36,0.12); --tint-green: rgba(63,125,73,0.14); --tint-ink: rgba(0,0,0,0.04); --tint-deep: rgba(0,0,0,0.05);
+    --shadow: 0 8px 24px rgba(50,40,15,0.10);
+    --glow-a: rgba(63,125,73,0.10); --glow-b: rgba(143,111,36,0.08);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  html, body { margin: 0; }
+  body {
+    font-family: var(--sans); font-size: 15px; line-height: 1.55; color: var(--ink);
+    background: radial-gradient(1100px 520px at 85% -10%, var(--glow-a), transparent 60%), radial-gradient(900px 460px at 0% 100%, var(--glow-b), transparent 55%), var(--bg);
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--tint-gold); }
+  a { color: var(--gold); }
+  b { font-weight: 600; color: var(--ink); }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 22px; }
+
+  /* nav */
+  .nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--line); }
+  .nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 60px; }
+  .brand { display: flex; align-items: baseline; gap: 10px; text-decoration: none; color: var(--ink); }
+  .brand .name { font-family: var(--serif); font-size: 22px; font-weight: 600; }
+  .brand .name em { color: var(--gold); font-style: italic; }
+  .links { display: flex; gap: 18px; align-items: center; font-size: 13.5px; font-weight: 600; }
+  .links a { color: var(--ink-dim); text-decoration: none; }
+  .links a:hover { color: var(--ink); }
+  .btn { display: inline-block; font-family: inherit; font-size: 14px; font-weight: 600; padding: 11px 22px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: transform .12s ease, box-shadow .15s ease, background .15s; }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: linear-gradient(160deg, var(--gold), var(--gold-soft)); color: var(--gold-ink); box-shadow: 0 4px 16px var(--tint-gold); }
+  .btn.primary:hover { box-shadow: 0 6px 22px var(--tint-gold); filter: brightness(1.05); }
+  .btn.ghost { background: transparent; color: var(--gold); border-color: var(--gold-soft); }
+  .btn.ghost:hover { background: var(--tint-gold); }
+  .btn.small { padding: 8px 14px; font-size: 13px; border-radius: 999px; }
+  .theme { font-size: 16px; line-height: 1; padding: 6px 10px; border-radius: 999px; background: transparent; color: var(--ink-dim); border: 1px solid var(--line); cursor: pointer; }
+
+  /* hero */
+  .hero { padding: 64px 0 36px; text-align: center; }
+  .eyebrow { font-size: 11px; letter-spacing: 3.5px; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
+  h1 { font-family: var(--serif); font-size: 54px; font-weight: 600; line-height: 1.05; margin: 0 0 16px; text-wrap: balance; letter-spacing: 0.2px; }
+  h1 em { color: var(--gold); font-style: italic; }
+  .sub { font-size: 18px; color: var(--ink-dim); max-width: 640px; margin: 0 auto 26px; text-wrap: balance; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .fine { font-size: 12.5px; color: var(--ink-faint); letter-spacing: 0.3px; }
+
+  /* tiles */
+  .tally { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 34px auto 0; max-width: 760px; }
+  .t { text-align: center; padding: 18px 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(165deg, var(--card2), var(--card)); box-shadow: var(--shadow); }
+  .t .n { font-family: var(--serif); font-size: 42px; font-weight: 600; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; }
+  .t .l { font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-dim); margin-top: 8px; }
+  .t .s { font-size: 12.5px; color: var(--ink-faint); margin-top: 6px; line-height: 1.45; }
+  .t .s b { color: var(--green); }
+  .t.win { border-color: var(--green); }
+  .asof { text-align: center; font-size: 11.5px; color: var(--ink-faint); margin-top: 10px; font-style: italic; }
+
+  /* sections */
+  section { padding: 44px 0; border-top: 1px solid var(--line); }
+  h2 { font-family: var(--serif); font-size: 34px; font-weight: 600; margin: 0 0 6px; line-height: 1.1; text-wrap: balance; }
+  .kicker { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; font-weight: 700; }
+  .intro { color: var(--ink-dim); font-size: 16px; max-width: 700px; margin: 0 0 22px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .card { padding: 20px 22px; border-radius: var(--radius); border: 1px solid var(--line); background: linear-gradient(165deg, var(--card2), var(--card)); box-shadow: var(--shadow); }
+  .card h3 { font-family: var(--serif); font-size: 22px; font-weight: 600; margin: 0 0 8px; }
+  .card h3 .pill { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.8px; padding: 2px 7px; border-radius: 5px; margin-right: 8px; vertical-align: 3px; font-family: var(--sans); }
+  .pg { background: var(--green); color: #0c1c13; } .pr { background: var(--red); color: #fff; } .py { background: var(--yellow); color: #14100a; }
+  .card p { margin: 0; color: var(--ink-dim); font-size: 14px; }
+  .two { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; align-items: start; }
+  ul.clean { margin: 0; padding-left: 20px; color: var(--ink-dim); }
+  ul.clean li { margin-bottom: 8px; }
+  .src { font-size: 12.5px; color: var(--ink-faint); font-style: italic; margin-top: 12px; }
+  .rules { padding: 16px 20px; border-radius: 12px; border: 1px dashed var(--gold-soft); background: var(--tint-gold); font-size: 14px; color: var(--ink-dim); }
+  .rules b { color: var(--gold); }
+
+  /* faq */
+  details.q { border-top: 1px solid var(--line); }
+  details.q:last-of-type { border-bottom: 1px solid var(--line); }
+  details.q summary { cursor: pointer; list-style: none; padding: 14px 4px; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+  details.q summary::-webkit-details-marker { display: none; }
+  details.q summary::before { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--gold); border-bottom: 2px solid var(--gold); transform: rotate(-45deg); transition: transform .2s; flex-shrink: 0; }
+  details.q[open] summary::before { transform: rotate(45deg); }
+  details.q .a { padding: 0 4px 16px 24px; color: var(--ink-dim); font-size: 14.5px; max-width: 760px; }
+  details.q .a p { margin: 0 0 8px; }
+
+  /* privacy */
+  .privacy p, .privacy li { color: var(--ink-dim); font-size: 14.5px; }
+  .privacy h3 { font-family: var(--serif); font-size: 21px; font-weight: 600; margin: 18px 0 6px; }
+
+  /* footer */
+  footer { padding: 30px 0 50px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-faint); line-height: 1.6; }
+  footer .row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+  footer a { color: var(--gold); text-decoration: none; }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } html { scroll-behavior: auto; } }
+  @media (max-width: 720px) {
+    .wrap { padding: 0 16px; }
+    .links a.hide { display: none; }
+    .hero { padding: 40px 0 28px; }
+    h1 { font-size: 38px; }
+    .sub { font-size: 16px; }
+    .t .n { font-size: 34px; }
+    h2 { font-size: 28px; }
+    .two { grid-template-columns: 1fr; }
+    section { padding: 34px 0; }
+  }
+</style>
 </head>
 <body>
-<p>Opening the planner… <a href="Weekly%20Kratom%20Planner.html">Continue</a></p>
+
+<nav class="nav"><div class="wrap">
+  <a class="brand" href="#top"><span class="name">Weekly <em>Kratom</em> Planner</span></a>
+  <div class="links">
+    <a class="hide" href="#what">What it does</a>
+    <a class="hide" href="#why">Why Super Speciosa</a>
+    <a class="hide" href="#faq">FAQ</a>
+    <a class="hide" href="#privacy">Privacy</a>
+    <a class="btn primary small" href="Weekly%20Kratom%20Planner.html">Open the planner</a>
+    <button class="theme" id="themeBtn" title="Switch light / dark" aria-label="Switch light or dark theme">&#9790;</button>
+  </div>
+</div></nav>
+
+<header class="hero" id="top"><div class="wrap">
+  <div class="eyebrow">Free &middot; for Super Speciosa customers &middot; no account</div>
+  <h1>Plan the week. Never run out.<br>Pay the <em>least</em> the store will take.</h1>
+  <p class="sub">A weekly strain rotation, a stock count that burns down on its own, and buying advice that prices every size, subscription and sale against how fast you actually go through each strain.</p>
+  <div class="cta">
+    <a class="btn primary" href="Weekly%20Kratom%20Planner.html">Open the planner</a>
+    <a class="btn ghost" href="#what">See what it does</a>
+  </div>
+  <div class="fine">Works in any browser, phone or PC. Everything you enter stays on your device.</div>
+  <div class="tally" id="money"></div>
+  <div class="asof" id="asof"></div>
+</div></header>
+
+<section id="what"><div class="wrap">
+  <div class="kicker">What it does</div>
+  <h2>Three things you were doing by hand, or not doing at all.</h2>
+  <p class="intro">Open it once a day. Tap the doses you took. The rest takes care of itself.</p>
+  <div class="cards">
+    <div class="card">
+      <h3><span class="pill pg">WEEK</span>A rotation you don't have to think about</h3>
+      <p>Say how the week should feel, from locked-in to unwound, and it lays out day, night and late doses so no strain repeats back to back and reds never stack. Save the weeks that worked, rate nights in the journal, print the sheet for the fridge.</p>
+    </div>
+    <div class="card">
+      <h3><span class="pill pr">STOCK</span>A shelf count that keeps itself</h3>
+      <p>Tell it what's on the shelf once. Each day the scheduled doses come off, capsules or tablets on the go, powder at home. When a strain gets tight it names the day to order so the box lands before you're out.</p>
+    </div>
+    <div class="card">
+      <h3><span class="pill py">BUY</span>Buying advice that does the math</h3>
+      <p>Every size and form the store sells, at one-time price, on Subscribe &amp; Save, and on upcoming scheduled sales, scored against your real usage. It says what to buy, which cadence, and whether to wait for the sale or order today.</p>
+    </div>
+  </div>
+</div></section>
+
+<section id="savings"><div class="wrap">
+  <div class="two">
+    <div>
+      <div class="kicker">What it saves you</div>
+      <h2>The same capsules, for a lot less.</h2>
+      <p class="intro">The store's own prices make the case. A bottle bought at list price whenever you run out is the most expensive way to buy the exact same product. The figures at the top of this page are computed from the live catalog: a three-dose day of standard capsules, bought as the smallest bottle at list, against the cheapest price per capsule the store offers on any size or subscription cadence.</p>
+      <p class="intro">Your own number depends on which strains you keep, how you split capsules and powder, and how you like to buy: least cash out over the next three months, least over a year, or best price per serving. The planner shows that figure on its Stock &amp; orders tab, next to what you'd pay at list.</p>
+    </div>
+    <div class="rules">
+      <b>How it decides.</b> For each strain it takes your weekly usage from the schedule, splits it into on-the-go and at-home doses, then prices every way to cover that usage: each size one-time, each size at an upcoming sale if your stock lasts until then, and each size on every subscription cadence using the store's real plan prices. Ties within one percent go to whichever asks for less money up front. Nothing is ordered until you do it on the store's own site.
+    </div>
+  </div>
+</div></section>
+
+<section id="why"><div class="wrap">
+  <div class="two">
+    <div>
+      <div class="kicker">Why Super Speciosa</div>
+      <h2>Built around one store, on purpose.</h2>
+      <p class="intro">The planner models one supplier's catalog because the person who built it is a customer there and wanted the buying math to be exact: real sizes, real plan prices, the real deal calendar. These are the store's own reasons, as published on <a class="storelink" href="https://superspeciosa.com" target="_blank" rel="noopener">superspeciosa.com</a>.</p>
+      <p class="src">Claims quoted from the store's site. This planner is independent and not affiliated with, endorsed by, or sponsored by Super Speciosa.</p>
+    </div>
+    <ul class="clean">
+      <li><b>Made in an FDA-registered, cGMP-qualified facility</b> in Fort Lauderdale, with nothing outsourced overseas.</li>
+      <li><b>American Kratom Association GMP-qualified</b> vendor.</li>
+      <li><b>Every batch third-party tested</b> by an ISO 17025 accredited lab. The QR code on the bag opens that batch's report.</li>
+      <li><b>Their kratom was used in the first FDA clinical study on kratom</b>, a serving-size study that found no serious adverse events.</li>
+      <li><b>100,000+ customers and 4.92 stars across 10,000+ reviews</b>, a 30-day satisfaction guarantee, and same-day shipping on orders placed before 2 pm Eastern.</li>
+      <li><b>Subscribe &amp; Save takes 20% off every size</b>, and scheduled sales run most weeks. The planner tracks both.</li>
+    </ul>
+  </div>
+</div></section>
+
+<section id="faq"><div class="wrap">
+  <div class="kicker">FAQ</div>
+  <h2>Questions people ask first.</h2>
+  <details class="q"><summary>Is this Super Speciosa's app?</summary><div class="a"><p>No. It is an independent, unofficial tool built by a customer. Product names, sizes, prices and deals are read from the store's public pages; nothing else comes from the store.</p></div></details>
+  <details class="q"><summary>What does it cost?</summary><div class="a"><p>Nothing. There is no account, no subscription and no paid tier. Links to the store may be affiliate links: if you buy through one, this site may earn a commission from the store at no extra cost to you. Prices are the store's and are the same whether you arrive from here or not.</p></div></details>
+  <details class="q"><summary>What happens when I click Add to cart or Subscribe?</summary><div class="a"><p>A new tab opens on superspeciosa.com with that exact size already in the cart, and the delivery cadence selected if it was a subscription pick. You check out there, on the store's own site, with the store's own checkout. The planner never sees your payment details and never places an order for you.</p><p>Afterwards, tap <b>log order</b> in the planner so the stock count knows something is on its way. That is a note to yourself; nothing is sent anywhere.</p></div></details>
+  <details class="q"><summary>Where is my data?</summary><div class="a"><p>In your browser's local storage, on your device. Nothing is uploaded; there is no server to upload to. That also means each browser has its own copy: to move to another phone or PC, open Settings, save a backup file, and restore it on the other device. Clearing your browser's site data erases the planner, so keep a backup.</p></div></details>
+  <details class="q"><summary>How does it know what I have left?</summary><div class="a"><p>You enter what's on the shelf once, by container and how full it is. From then on, each completed day takes the scheduled doses off: capsules or tablets for doses on the go, powder first for doses at home. Logged orders are added on their arrival date. Overwrite any number whenever a container looks different from the estimate.</p></div></details>
+  <details class="q"><summary>What are the serving sizes it assumes?</summary><div class="a"><p>Three capsules for the day dose, three for the night dose, and two for the optional late dose, with every dose at least six hours from the last. One capsule is 500 mg of leaf, so three capsules is about 1.5 g of powder or five 300 mg tablets. All forms of a strain share one stock count. A break week drops to two capsules a serving with no late dose.</p></div></details>
+  <details class="q"><summary>Can more than one person use it?</summary><div class="a"><p>Yes. Add people in Settings. Each person gets their own week, journal and saved weeks; the shelf and the orders are shared, since the household buys together.</p></div></details>
+  <details class="q"><summary>Can I print it?</summary><div class="a"><p>Yes. Export PDF gives a one-page sheet of the week with the rules and any standing items, and Print does the same through the browser.</p></div></details>
+  <details class="q"><summary>Do the prices stay current?</summary><div class="a"><p>Yes. The catalog, subscription prices and deal calendar are refreshed from the store every morning, and the planner also checks live prices when you open it. The date of the last refresh is shown on the Stock &amp; orders tab.</p></div></details>
+  <details class="q"><summary>Does it work on a phone?</summary><div class="a"><p>Yes. It is a plain web page, so open it in the phone's browser and use the browser's share or menu button to add it to the home screen. It then opens like an app.</p></div></details>
+  <details class="q"><summary>What about other brands?</summary><div class="a"><p>The buying model only knows Super Speciosa's catalog. You can still use the rotation and the journal with anything, but stock and buying advice assume the store's sizes and prices.</p></div></details>
+  <details class="q"><summary>Is any of this medical advice?</summary><div class="a"><p>No. It is a scheduling and shopping tool. It does not know your health, your medications or your history. Talk to a healthcare provider about interactions with any medication, and follow the label. For adults 21 and over where kratom is legal.</p></div></details>
+</div></section>
+
+<section id="privacy"><div class="wrap privacy">
+  <div class="kicker">Privacy</div>
+  <h2>There is no account because there is nothing to sign up for.</h2>
+  <h3>What is stored, and where</h3>
+  <p>Everything you enter (names, strains, weeks, journal notes, stock, orders) is kept in your browser's local storage on your own device. It is never sent to this site's operator, and there is no database behind the page. Backups are files you download; they contain the same data in plain text, so keep them somewhere private.</p>
+  <h3>What leaves your device</h3>
+  <ul class="clean">
+    <li><b>Hosting.</b> The pages are served by GitHub Pages, which keeps ordinary web server logs (your IP address, the page requested, the time) under <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy statement</a>.</li>
+    <li><b>Fonts and the PDF library.</b> The page loads two typefaces from Google Fonts and the PDF library from cdnjs (Cloudflare). Those services see the request for the file, as with any site that uses them.</li>
+    <li><b>Live prices.</b> When you open the planner it asks superspeciosa.com for its public product list, directly from your browser, at most once a day. The store sees that request the way it sees any visit.</li>
+    <li><b>Clicking through to the store.</b> Store links open superspeciosa.com, where the store's own privacy policy applies. If a link carries an affiliate code, the store's affiliate platform sets a cookie so the store can attribute a purchase; that cookie tells this site's operator nothing about you.</li>
+  </ul>
+  <h3>What is not here</h3>
+  <p>No analytics, no tracking pixels, no advertising scripts, no cookies set by this site, and no way for the operator to see what you have entered. The source is public on <a href="https://github.com/joshdprog-spec/kratom-planner" target="_blank" rel="noopener">GitHub</a>, so this can be checked rather than taken on trust.</p>
+  <h3>Deleting your data</h3>
+  <p>Clear this site's data in your browser settings, or use a private window and it is gone when the window closes. Delete any backup files you saved.</p>
+</div></section>
+
+<footer><div class="wrap">
+  <div class="row">
+    <a href="Weekly%20Kratom%20Planner.html">Open the planner</a>
+    <a href="#faq">FAQ</a>
+    <a href="#privacy">Privacy</a>
+    <a href="https://github.com/joshdprog-spec/kratom-planner" target="_blank" rel="noopener">Source on GitHub</a>
+  </div>
+  <div>An independent, unofficial planner for Super Speciosa products. Not affiliated with, endorsed by, or sponsored by Super Speciosa; product names, prices and deals come from the store's public pages. Links to the store may be affiliate links: if you buy through one, this site may earn a commission at no extra cost to you. For adults 21+ where kratom is legal. Not medical advice; consult a healthcare provider about interactions with any medication.</div>
+</div></footer>
+
+<script>
+(function(){
+  // theme, shared with the planner through the same local storage key
+  var btn = document.getElementById("themeBtn");
+  function applyTheme(t){
+    if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+    else document.documentElement.removeAttribute("data-theme");
+    btn.innerHTML = t === "light" ? "&#9789;" : "&#9790;";
+    try { localStorage.setItem("kratomPlannerTheme", t); } catch(e){}
+  }
+  var saved = "dark";
+  try { saved = localStorage.getItem("kratomPlannerTheme") || "dark"; } catch(e){}
+  btn.innerHTML = saved === "light" ? "&#9789;" : "&#9790;";
+  btn.addEventListener("click", function(){ applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"); });
+
+  // the money case, from the live catalog: a three-dose day of standard capsules, smallest bottle at
+  // list price, against the cheapest per-capsule price on any size or subscription cadence
+  var SNAP = (typeof window.SUPPLIER_SNAPSHOT === "object" && window.SUPPLIER_SNAPSHOT) ? window.SUPPLIER_SNAPSHOT : null;
+  var el = document.getElementById("money"), asof = document.getElementById("asof");
+  if (!SNAP || !SNAP.catalog || !SNAP.catalog.strains) return;
+  var strains = SNAP.catalog.strains;
+  var caps = 3 + 3 + 2, month = caps * 30;
+  var list = null, best = null, bestLabel = "";
+  Object.keys(strains).forEach(function(k){
+    var x = strains[k];
+    if (/reserve/i.test(x.name)) return;
+    var vs = (x.forms && x.forms.caps && x.forms.caps.variants) || [];
+    var smallest = null;
+    vs.forEach(function(v){
+      if (!v.count || v.available === false || !(v.price > 0)) return;
+      if (!smallest || v.count < smallest.count) smallest = v;
+      var prices = [v.price].concat(v.planPrices ? Object.keys(v.planPrices).map(function(id){ return v.planPrices[id]; }) : []);
+      var unit = Math.min.apply(null, prices) / v.count;
+      if (best === null || unit < best){ best = unit; bestLabel = v.label.replace(/\s*\(deal\)/, "") + (prices.length > 1 && Math.min.apply(null, prices) < v.price ? " on Subscribe & Save" : ""); }
+    });
+    if (smallest){ var u = smallest.price / smallest.count; if (list === null || u < list) list = u; }
+  });
+  if (list === null || best === null || best >= list) return;
+  function money(n){ return "$" + Math.round(n); }
+  var listMo = list * month, bestMo = best * month, save = listMo - bestMo;
+  el.innerHTML =
+    '<div class="t"><div class="n">' + money(listMo) + '</div><div class="l">a month, buying as you go</div><div class="s">' + caps + ' capsules a day, 60-count bottles at list price</div></div>' +
+    '<div class="t win"><div class="n">' + money(bestMo) + '</div><div class="l">a month, the planner’s way</div><div class="s">the same ' + caps + ' capsules a day as ' + bestLabel + '</div></div>' +
+    '<div class="t"><div class="n">' + money(save * 12) + '</div><div class="l">back in your pocket a year</div><div class="s"><b>' + Math.round(save / listMo * 100) + '% less</b> for the same product, before any sale</div></div>';
+  if (SNAP.fetchedAt) asof.textContent = "Computed from the store’s catalog as of " + new Date(SNAP.fetchedAt).toLocaleDateString() + ". Your own figure depends on your strains and how you buy.";
+})();
+</script>
 </body>
 </html>

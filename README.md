@@ -31,6 +31,7 @@ A GitHub Actions workflow (`.github/workflows/refresh-supplier.yml`) runs it dai
 ## Files
 
 - `Weekly Kratom Planner.html` — the app.
+- `index.html` — the landing page: pitch, FAQ, privacy, disclosures.
 - `supplier-data.js` — generated catalog, plans, and deals.
 - `refresh-supplier.js` — the generator for the above.
 - `build-artifact.py` — strips the document wrappers for publishing as a claude.ai artifact.
@@ -40,4 +41,4 @@ A GitHub Actions workflow (`.github/workflows/refresh-supplier.yml`) runs it dai
 
 ## Hosting
 
-The app is static and published with GitHub Pages at https://joshdprog-spec.github.io/kratom-planner/ (the root `index.html` just redirects to the app file). Any other static host works too; the Actions workflow keeps the deal data fresh either way.
+The app is static and published with GitHub Pages at https://joshdprog-spec.github.io/kratom-planner/. The root `index.html` is the landing page (what it does, the savings case computed from the live catalog, why Super Speciosa, FAQ, privacy); the planner itself is `Weekly Kratom Planner.html`. Any other static host works too; the Actions workflow keeps the deal data fresh either way.

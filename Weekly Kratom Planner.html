@@ -334,6 +334,8 @@
   .fact { font-family: var(--serif); font-size: 19px; font-weight: 500; font-style: italic; line-height: 1.55; color: var(--ink); text-align: center; min-height: 52px; padding: 6px 14px 0; transition: opacity 0.35s ease; }
   .fact-controls { text-align: center; margin-top: 10px; }
   .footer { text-align: center; font-size: 11px; color: var(--ink-faint); margin-top: 16px; letter-spacing: 0.3px; line-height: 1.5; }
+  .footer a { color: var(--gold); }
+  .hint a { color: var(--gold); }
 
   /* ---------- motion preference ---------- */
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
@@ -609,7 +611,7 @@
       </details>
     </div>
 
-    <div class="footer">An independent, unofficial planner for Super Speciosa products. Not affiliated with, endorsed by, or sponsored by Super Speciosa; product names and prices come from their public store pages. For adults 21+ where kratom is legal. Not medical advice; consult a healthcare provider about interactions with any medication. Your data stays in your browser.</div>
+    <div class="footer">An independent, unofficial planner for Super Speciosa products. Not affiliated with, endorsed by, or sponsored by Super Speciosa; product names and prices come from their public store pages. For adults 21+ where kratom is legal. Not medical advice; consult a healthcare provider about interactions with any medication. Your data stays in your browser. Links to the store may be affiliate links: if you buy through one, this site may earn a commission at no extra cost to you. <a href="https://joshdprog-spec.github.io/kratom-planner/">About, FAQ and privacy</a></div>
 
   </div>
 
@@ -1972,7 +1974,7 @@
     var pan = document.getElementById("setupPanel");
     pan.style.display = (!state.setup || settingsOpen) ? "" : "none";
     document.getElementById("setupTitle").textContent = state.setup ? "Settings" : "Welcome";
-    document.getElementById("setupHint").textContent = state.setup ? "" : "A minute of setup: who's here, which strains you keep, and you're planning.";
+    document.getElementById("setupHint").innerHTML = state.setup ? "" : "A minute of setup: who's here, which strains you keep, and you're planning. New here? <a href=\"https://joshdprog-spec.github.io/kratom-planner/\">What this does, and why</a>.";
     var ppl = document.getElementById("setupPeople"); ppl.innerHTML = "";
     var wrap = document.createElement("div"); wrap.className = "people";
     Object.keys(state.profiles).forEach(function(id){
