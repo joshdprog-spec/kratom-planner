@@ -366,7 +366,14 @@
   .subs b { color: var(--cream); }
   .subs .yes { color: #9fd3a6; }
   .subs .no { color: var(--cream-dim); }
-  .subs .opt { display: inline-block; margin: 2px 10px 2px 0; }
+  .subs details { border-top: 1px solid rgba(44,74,53,0.5); }
+  .subs details > div { padding: 2px 0 6px 14px; }
+  .subs summary { cursor: pointer; padding: 5px 2px; list-style: none; }
+  .subs summary::-webkit-details-marker { display: none; }
+  .subs summary::before { content: "\25B8"; color: var(--gold); margin-right: 6px; font-size: 9px; }
+  .subs details[open] > summary::before { content: "\25BE"; }
+  .subs > details > summary { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); font-weight: 700; border: none; }
+  .subs .opt { display: block; margin: 2px 0; }
   .subs .opt.win { color: var(--cream); }
   .subs .opt .tagw { font-size: 7.5px; letter-spacing: 1px; text-transform: uppercase; color: #9fd3a6; margin-left: 4px; }
   .suprow a.sub { background: rgba(90,158,99,0.15); border: 1px solid rgba(90,158,99,0.6); color: #9fd3a6; }
@@ -1762,32 +1769,32 @@
       if (!pools.length) return;
       var promos = promosFor(SUPPLIER[k]);
       var soon = promos.filter(function(pm){ return promoState(pm) === "upcoming"; })[0];
-      var txt = '<b>' + S[k].name + '</b>';
+      var txt = '';
       pools.forEach(function(pool){
         var pdays = Math.floor(pool.stock / pool.perDay);
         var bb = bestBuy(k, pool.perDay, soon, pdays, pool.buyForms);
         if (!bb) return;
-        txt += '<div>' + (pool.label ? '<i>' + pool.label + '</i> \u00b7 ' : '') + '~' + (pool.perDay * 7).toFixed(0) + (k === "KAVA" ? ' gummies' : ' caps') + '-worth/week. ';
-        txt += '<span class="opt win">' + optText(bb.pick) + '<span class="tagw">pick</span></span>';
-        if (bb.cheapestNow !== bb.pick) txt += '<span class="opt">least up front: ' + optText(bb.cheapestNow) + '</span>';
-        if (bb.cheapestTime !== bb.pick && bb.cheapestTime !== bb.cheapestNow) txt += '<span class="opt">best per serving: ' + optText(bb.cheapestTime) + '</span>';
+        var head = '<b>' + S[k].name + '</b>' + (pool.label ? ' <i>' + pool.label + '</i>' : '') + ': ' + bb.pick.label + ' \u2014 ' + money(bb.pick.cashNow) + (bb.pick.kind === "sub" ? ' a delivery' : '');
+        var body = '<span class="opt win">' + optText(bb.pick) + '<span class="tagw">pick</span></span>';
+        if (bb.cheapestNow !== bb.pick) body += '<span class="opt">least up front: ' + optText(bb.cheapestNow) + '</span>';
+        if (bb.cheapestTime !== bb.pick && bb.cheapestTime !== bb.cheapestNow) body += '<span class="opt">best per serving: ' + optText(bb.cheapestTime) + '</span>';
         (pool.altForms || []).forEach(function(f){
           var ab = bestBuy(k, pool.perDay, soon, pdays, [f]);
-          if (ab) txt += '<span class="opt">as ' + FORMS[f] + ': ' + optText(ab.pick) + '</span>';
+          if (ab) body += '<span class="opt">as ' + FORMS[f] + ': ' + optText(ab.pick) + '</span>';
         });
-        txt += '</div>';
+        txt += '<details><summary>' + head + '</summary><div>~' + (pool.perDay * 7).toFixed(0) + (k === "KAVA" ? ' gummies' : ' caps') + '-worth a week. ' + body + '</div></details>';
       });
       var os = (byKey[k] || []).slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
       if (os.length >= 2){
         var spend = os.reduce(function(a,o){ return a + (o.paid||0); }, 0);
         var listTotal = os.reduce(function(a,o){ var u = unitList(o.key, o.size, o.label); return a + (u ? u * o.qty : (o.paid||0)); }, 0);
         var captured = listTotal > 0 ? 1 - spend / listTotal : 0;
-        txt += '<div class="no">Your ' + os.length + ' logged orders averaged ' + Math.round(captured*100) + '% off list' +
+        txt += '<div class="no" style="padding:2px 0 6px 14px">Your ' + os.length + ' logged orders averaged ' + Math.round(captured*100) + '% off list' +
           (captured >= SUB_DISCOUNT ? ' \u2014 you already beat the subscription by timing sales.' : ' \u2014 the subscription\u2019s ' + Math.round(SUB_DISCOUNT*100) + '% would have been better.') + '</div>';
       }
-      lines.push('<div>' + txt + '</div>');
+      if (txt) lines.push(txt);
     });
-    if (lines.length){ box.innerHTML = '<h3>Subscribe or buy?</h3><div class="no" style="border:none;padding-bottom:6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Picks follow your buying style above; every option lists what it costs up front, over 3 months and over a year. Ties within 5% go to whichever asks for less up front.</div>' + lines.join(""); }
+    if (lines.length){ box.innerHTML = '<details><summary>What to buy, per strain (tap a strain for the math)</summary><div><div class="no" style="border:none;padding:4px 0 6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Picks follow your buying style. Ties within 5% go to whichever asks for less up front.</div>' + lines.join("") + '</div></details>'; }
   }
 
   function renderOrders(){
