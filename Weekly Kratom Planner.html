@@ -438,6 +438,7 @@
       <div class="hint" id="setupHint"></div>
       <div class="invsub">Who's using this</div>
       <div id="setupPeople" class="orow"></div>
+      <div class="orow" id="redoRow" style="display:none"><button class="savebtn" id="redoSetup">Redo my setup</button><span class="hint" style="padding:0">Doses, days, capsules per dose: run the first-time questions again for the person selected above.</span></div>
       <div class="invsub">Strains you use</div>
       <div class="hint">The rotation only draws from strains you switch on. Leave a strain off if it's not in your house.</div>
       <div class="strainpick" id="strainPick"></div>
@@ -742,7 +743,7 @@
   function blankProfile(name){
     return { name: name, v: 50, hasLate: false, doses: 2, days: ALL_DAYS.slice(), sigCount: 1, breakWeek: false,
              serve: { day: SERVING.day, night: SERVING.night, late: SERVING.late, brk: SERVING.brk },
-             week: null, weekStamp: null, checks: {}, journal: {}, saved: [] };
+             week: null, weekStamp: null, checks: {}, journal: {}, saved: [], setup: false };
   }
   function blankInventory(){ return {}; }
   // bring older saved profiles up to date: sigTwice -> sigCount, and drop
@@ -776,6 +777,7 @@
       if (p.sigCount === undefined) p.sigCount = p.sigTwice ? 2 : 1;
       if (p.breakWeek === undefined) p.breakWeek = false;
       if (!p.saved) p.saved = [];
+      if (p.setup === undefined) p.setup = !!p.week;   // people who already had a week are set up; anyone else meets the questions
       if (!p.doses) p.doses = p.hasLate ? 3 : 2;
       p.doses = Math.max(1, Math.min(3, p.doses | 0)); p.hasLate = p.doses === 3;
       if (!p.days || p.days.length !== 7) p.days = ALL_DAYS.slice();
@@ -2096,10 +2098,27 @@
   // ---------- settings / first run / backup ----------
   function renderSettings(){
     var pan = document.getElementById("setupPanel");
-    pan.style.display = (!state.setup || settingsOpen) ? "" : "none";
-    document.getElementById("setupTitle").textContent = state.setup ? "Settings" : "Welcome";
-    ["howHead","howHint","howDoses","howDays","howServe","ageRow"].forEach(function(id){ document.getElementById(id).style.display = state.setup ? "none" : ""; });
-    document.getElementById("setupHint").innerHTML = state.setup ? "" : "A minute of setup: who's here, which strains you keep, and you're planning. New here? <a href=\"https://joshdprog-spec.github.io/kratom-planner/\">What this does, and why</a>.";
+    var me = P(), personSetup = !me.setup;
+    pan.style.display = (!state.setup || personSetup || settingsOpen) ? "" : "none";
+    document.getElementById("setupTitle").textContent = !state.setup ? "Welcome" : personSetup ? "Welcome, " + me.name : "Settings";
+    ["howHead","howHint","howDoses","howDays","howServe"].forEach(function(id){ document.getElementById(id).style.display = personSetup ? "" : "none"; });
+    document.getElementById("ageRow").style.display = (personSetup && !me.confirmed) ? "" : "none";
+    document.getElementById("redoRow").style.display = (state.setup && !personSetup) ? "" : "none";
+    document.getElementById("setupHint").innerHTML = !state.setup ? "A minute of setup: who's here, which strains you keep, and you're planning. New here? <a href=\"https://joshdprog-spec.github.io/kratom-planner/\">What this does, and why</a>." :
+      personSetup ? "Say how you take it. Your numbers, not anyone else's; you can change them any time under the week's slider." : "";
+    if (personSetup){
+      // a redo starts from the person's current numbers; a first setup starts blank
+      var pre = prefillFor === state.activeProfile;
+      var dosesNow = pre ? me.doses : 2;
+      [].forEach.call(document.querySelectorAll('input[name="howLate"]'), function(r){ r.checked = +r.value === dosesNow; });
+      [].forEach.call(document.querySelectorAll("#howDays input"), function(c){ c.checked = pre ? !!me.days[+c.getAttribute("data-day")] : true; });
+      document.getElementById("howDay").value = pre ? me.serve.day : "";
+      document.getElementById("howNight").value = pre ? me.serve.night : "";
+      document.getElementById("howLateN").value = pre ? me.serve.late : "";
+      document.getElementById("howNightWrap").style.display = dosesNow >= 2 ? "" : "none";
+      document.getElementById("howLateWrap").style.display = dosesNow === 3 ? "" : "none";
+      document.getElementById("ageOk").checked = false;
+    }
     var ppl = document.getElementById("setupPeople"); ppl.innerHTML = "";
     var wrap = document.createElement("div"); wrap.className = "people";
     Object.keys(state.profiles).forEach(function(id){
@@ -2119,27 +2138,33 @@
       sp.appendChild(l);
     });
   }
-  var settingsOpen = false;
+  var settingsOpen = false, prefillFor = null;
+  document.getElementById("redoSetup").addEventListener("click", function(){
+    prefillFor = state.activeProfile; P().setup = false; renderSettings();
+    document.getElementById("setupPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   document.getElementById("settingsBtn").addEventListener("click", function(){ settingsOpen = !settingsOpen; renderSettings(); if (settingsOpen) document.getElementById("setupPanel").scrollIntoView({ behavior: "smooth", block: "start" }); });
   document.getElementById("setupDone").addEventListener("click", function(){
     var ordinary = state.myStrains.filter(function(k){ return !S[k].reserve; }).length;
     if (ordinary < 3){ notify("Switch on at least three ordinary strains (reserves don't count) so a week can rotate without repeats."); return; }
-    if (!state.setup){
-      if (!document.getElementById("ageOk").checked){ notify("Please confirm that you're 21 or older and that kratom is legal where you live."); return; }
-      state.confirmed = todayKey();
+    var p0 = P();
+    if (!p0.setup){
+      if (!p0.confirmed && !document.getElementById("ageOk").checked){ notify("Please confirm that you're 21 or older and that kratom is legal where you live."); return; }
       var doses = +document.querySelector('input[name="howLate"]:checked').value;
       var days = [].map.call(document.querySelectorAll("#howDays input"), function(c){ return c.checked; });
       if (!days.some(Boolean)){ notify("Tick at least one day you take it."); return; }
       var d = parseFloat(document.getElementById("howDay").value), n = parseFloat(document.getElementById("howNight").value), l = parseFloat(document.getElementById("howLateN").value);
       if (!(d > 0) || (doses >= 2 && !(n > 0)) || (doses === 3 && !(l > 0))){ notify("Enter how many capsules you take for each dose. Half capsules are fine; if you use powder, 1 g counts as 2 capsules."); return; }
       var half = function(x){ return Math.min(12, Math.max(0.5, Math.round(x * 2) / 2)); };
-      var p0 = P(); p0.doses = doses; p0.hasLate = doses === 3; p0.days = days;
+      p0.doses = doses; p0.hasLate = doses === 3; p0.days = days;
+      if (!p0.confirmed) p0.confirmed = todayKey();
+      p0.setup = true;
       setDeviceWho(state.activeProfile);
       var nn = doses >= 2 ? n : d;
       p0.serve = { day: half(d), night: half(nn), late: doses === 3 ? half(l) : half(Math.min(d, nn)), brk: half(Math.min(d, nn) * 2 / 3) };
       syncControls();
     }
-    state.setup = true; settingsOpen = false; saveState(); renderSettings(); renderAll();
+    state.setup = true; settingsOpen = false; prefillFor = null; saveState(); renderSettings(); renderAll();
     if (!P().week){ var ctl = document.querySelector('details[data-more="ctl"]'); ctl.open = true; ctl.scrollIntoView({ behavior: "smooth", block: "start" }); }
   });
   [].forEach.call(document.querySelectorAll('input[name="howLate"]'), function(r){
@@ -2150,7 +2175,7 @@
     if (el.id === "addPerson"){
       var nm = cleanName(document.getElementById("newPersonName").value);
       if (!nm){ notify("Type the new person\u2019s name first."); document.getElementById("newPersonName").focus(); return; }
-      addProfile(nm); renderSettings(); notify(nm + " added. Set their doses and days under the slider."); return;
+      addProfile(nm); renderSettings(); notify(nm + " added. Answer the questions for them now, or they can on their own phone."); return;
     }
     var del = el.getAttribute && el.getAttribute("data-del"); if (del){ removeProfile(del); renderSettings(); }
   });
