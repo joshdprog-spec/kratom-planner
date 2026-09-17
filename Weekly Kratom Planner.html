@@ -450,6 +450,7 @@
       <div class="invsub">Backup</div>
       <div class="orow"><button class="savebtn" id="bakExport">Save a backup file</button><button class="savebtn" id="bakCopy">Copy backup text</button><label class="savebtn filebtn">Restore from file<input type="file" id="bakImport" accept="application/json,.json"></label></div>
       <div class="hint">Your data lives only in this browser. A backup moves it to another phone or PC, or brings it back after clearing the browser.</div>
+      <div class="opts" id="ageRow"><label><input type="checkbox" id="ageOk"> I'm 21 or older, and kratom is legal where I live.</label></div>
       <div class="btns"><button id="setupDone">Done</button></div>
     </div>
 
@@ -536,11 +537,12 @@
         <div class="orow standadd"><label>Add <select id="standKey"></select></label><button class="savebtn" id="standAdd">Add standing item</button></div>
       </div>
       <div class="rules">
-        <b>Servings:</b> <span id="rulesServ"></span> every dose &ge;6 hrs from the last. 1 cap = 500 mg; 1 g of powder counts as 2 caps and a 300 mg tablet as 0.6 &mdash; all forms of a strain share one stock.
-        <b>Standing items:</b> extracts and gummies are dosed by serving, not by strain, so they never rotate. Kava is calm only and doesn't rotate either. Never stack full servings of two things at once.
-        <b>Guarantees:</b> the reserve strain exactly as many days as selected, never back to back &middot; no strain on consecutive days in the same column &middot; no red repeats within 24 hrs in any direction &middot; nothing twice in one day.
-        <b>Check-offs:</b> tap the circle on a dose when you take it &mdash; it feeds the journal. Inventory assumes the schedule is followed and burns down on its own.
-        <b>If effects feel dulled:</b> regenerate toward the other end of the spectrum or take a break day &mdash; never dose up.
+        <b>Servings:</b> <span id="rulesServ"></span> your numbers, set under the slider. 1 cap = 500 mg; 1 g of powder counts as 2 caps and a 300 mg tablet as 0.6 &mdash; all forms of a strain share one stock.
+        <b>Standing items:</b> extracts, gummies and kava are counted by serving, not by strain, so they sit outside the rotation.
+        <b>The rotation:</b> the reserve strain exactly as many days as selected, never back to back &middot; no strain on consecutive dose days in the same column &middot; no red repeated within 24 hrs in either direction &middot; nothing twice in one day.
+        <b>Check-offs:</b> tap the circle on a dose when you take it &mdash; it feeds the journal. Stock assumes the schedule is followed and burns down on its own.
+        <b>Descriptions:</b> the one-line strain descriptions are Super Speciosa's own product copy, quoted from the store.
+        <b>If a week isn't working:</b> move the slider the other way, or take a break week, and generate again.
       </div>
       <div class="saved">
         <h3>Saved weeks</h3>
@@ -1394,7 +1396,7 @@
       var before = buzzes.slice(-10, -5);
       var avg = function(a){ return a.reduce(function(x,y){return x+y;},0) / a.length; };
       if (before.length >= 3 && avg(recent) <= avg(before) - 0.8){
-        trendEl.textContent = "Buzz ratings trending down — classic tolerance signal. Consider a break day or shaking up the rotation before raising anything.";
+        trendEl.textContent = "Buzz ratings are trending down. A break week or a different rotation is worth trying before changing anything else.";
       }
     }
     // per-strain: which strains sit well below your overall average
@@ -2053,7 +2055,7 @@
     var pan = document.getElementById("setupPanel");
     pan.style.display = (!state.setup || settingsOpen) ? "" : "none";
     document.getElementById("setupTitle").textContent = state.setup ? "Settings" : "Welcome";
-    ["howHead","howHint","howDoses","howDays","howServe"].forEach(function(id){ document.getElementById(id).style.display = state.setup ? "none" : ""; });
+    ["howHead","howHint","howDoses","howDays","howServe","ageRow"].forEach(function(id){ document.getElementById(id).style.display = state.setup ? "none" : ""; });
     document.getElementById("setupHint").innerHTML = state.setup ? "" : "A minute of setup: who's here, which strains you keep, and you're planning. New here? <a href=\"https://joshdprog-spec.github.io/kratom-planner/\">What this does, and why</a>.";
     var ppl = document.getElementById("setupPeople"); ppl.innerHTML = "";
     var wrap = document.createElement("div"); wrap.className = "people";
@@ -2078,6 +2080,8 @@
     var ordinary = state.myStrains.filter(function(k){ return !S[k].reserve; }).length;
     if (ordinary < 3){ alert("Switch on at least three ordinary strains (reserves don't count) so a week can rotate without repeats."); return; }
     if (!state.setup){
+      if (!document.getElementById("ageOk").checked){ alert("Please confirm that you're 21 or older and that kratom is legal where you live."); return; }
+      state.confirmed = todayKey();
       var doses = +document.querySelector('input[name="howLate"]:checked').value;
       var days = [].map.call(document.querySelectorAll("#howDays input"), function(c){ return c.checked; });
       if (!days.some(Boolean)){ alert("Tick at least one day you take it."); return; }
@@ -2403,11 +2407,11 @@
 
     var rules = [
       p.breakWeek
-        ? ["Break week:", capsText(sv.brk) + " a serving, Day and Night only, no Signature Reserve. Every dose at least 6 hrs from the last. The point is to let tolerance reset \u2014 don't top up."]
-        : ["Servings:", serveText({ serve: sv, hasLate: hasLate, doses: doses, breakWeek: false }) + " \u00b7 every dose at least 6 hrs from the last."],
-      ["Standing items:", "extracts, gummies and kava are dosed by serving, not by strain, so they never rotate. Never stack full servings of two things at once."],
-      ["Guarantees:", "the reserve strain exactly as many days as selected, never back to back \u00b7 no strain on consecutive days in the same column \u00b7 no red repeats within 24 hrs in any direction \u00b7 nothing twice in one day."],
-      ["If effects feel dulled:", "regenerate toward the other end of the spectrum or take a break day \u2014 never dose up."]
+        ? ["Break week:", capsText(sv.brk) + " a serving, " + (doses >= 2 ? "Day and Night only" : "Day only") + ", no Signature Reserve. A lighter week by your choice; the servings are yours."]
+        : ["Servings:", serveText({ serve: sv, hasLate: hasLate, doses: doses, breakWeek: false }) + " \u00b7 your numbers, set in the planner."],
+      ["Standing items:", "extracts, gummies and kava are counted by serving, not by strain, so they sit outside the rotation."],
+      ["The rotation:", "the reserve strain exactly as many days as selected, never back to back \u00b7 no strain on consecutive dose days in the same column \u00b7 no red repeated within 24 hrs in either direction \u00b7 nothing twice in one day."],
+      ["If a week isn't working:", "move the slider the other way, or take a break week, and generate again."]
     ];
     var bx = X0 + 16, bw = X1 - X0 - 32 - 10, lh = 11.5;
     var laid = rules.map(function(r){
@@ -2427,7 +2431,7 @@
     fill(C.rulesBg); stroke([221,221,221]);
     doc.roundedRect(X0, y, X1 - X0, boxH, 6, 6, "FD");
     font("bold", 8.5, C.green);
-    doc.text("RULES", bx, y + 16);
+    doc.text("HOW THIS WEEK IS BUILT", bx, y + 16);
     var ry = y + 30;
     laid.forEach(function(r){
       font("normal", 8.5, [68,68,68]); doc.text("\u2022", bx, ry);
