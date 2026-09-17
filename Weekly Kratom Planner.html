@@ -140,6 +140,9 @@
   .opts { display: flex; gap: 10px 22px; flex-wrap: wrap; justify-content: center; font-size: 13.5px; color: var(--ink-dim); margin-top: 14px; }
   .opts label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
   .opts input[type=checkbox] { accent-color: var(--gold); width: 16px; height: 16px; }
+  .opts.serve { margin-top: 10px; }
+  .opts.serve input[type=number] { width: 60px; padding: 4px 6px; font-size: 13px; }
+  .opts.serve .eq { width: 100%; text-align: center; font-size: 12px; color: var(--ink-faint); }
   .brk { color: var(--yellow); font-weight: 600; }
 
   /* ---------- fields ---------- */
@@ -467,7 +470,15 @@
             <option value="2">Twice a week</option>
           </select>
         </label>
-        <label title="Greens by day, reds by night, 2 caps a serving, no Late column, no reserve strain"><input type="checkbox" id="breakWeek"> <span class="brk">Break week</span></label>
+        <label title="Greens by day, reds by night, smaller servings, no Late column, no reserve strain"><input type="checkbox" id="breakWeek"> <span class="brk">Break week</span></label>
+      </div>
+      <div class="opts serve">
+        <span>Capsules a dose:</span>
+        <label>Day <input type="number" id="srvDay" min="0.5" max="12" step="0.5"></label>
+        <label>Night <input type="number" id="srvNight" min="0.5" max="12" step="0.5"></label>
+        <label>Late <input type="number" id="srvLate" min="0.5" max="12" step="0.5"></label>
+        <label>Break week <input type="number" id="srvBrk" min="0.5" max="12" step="0.5"></label>
+        <span class="eq" id="srvEq"></span>
       </div>
       <div class="btns"><button id="gen">Generate Week</button></div>
       </details>
@@ -496,7 +507,7 @@
         <div class="orow standadd"><label>Add <select id="standKey"></select></label><button class="savebtn" id="standAdd">Add standing item</button></div>
       </div>
       <div class="rules">
-        <b>Servings:</b> 3 caps Day &middot; 3 caps Night &middot; 2&ndash;3 caps Late (only if needed) &middot; every dose &ge;6 hrs from the last. 1 cap = 500 mg, so 3 caps &asymp; 1.5 g powder or 5 tablets &mdash; all forms of a strain share one stock.
+        <b>Servings:</b> <span id="rulesServ"></span> every dose &ge;6 hrs from the last. 1 cap = 500 mg; 1 g of powder counts as 2 caps and a 300 mg tablet as 0.6 &mdash; all forms of a strain share one stock.
         <b>Standing items:</b> extracts and gummies are dosed by serving, not by strain, so they never rotate. Kava is calm only and doesn't rotate either. Never stack full servings of two things at once.
         <b>Guarantees:</b> the reserve strain exactly as many days as selected, never back to back &middot; no strain on consecutive days in the same column &middot; no red repeats within 24 hrs in any direction &middot; nothing twice in one day.
         <b>Check-offs:</b> tap the circle on a dose when you take it &mdash; it feeds the journal. Inventory assumes the schedule is followed and burns down on its own.
@@ -565,7 +576,7 @@
       <div class="hint" id="invHint"></div>
       <div class="invsub">Estimate on hand</div>
       <div class="invgrid" id="invGrid"></div>
-      <div class="invnote">Each strain is tracked per form: capsules, powder (grams) and tablets. One serving is 3 capsules, 1.5 g of powder or 5 tablets (300 mg each). On-the-go doses burn capsules or tablets; at-home doses burn powder first. Orders you log arrive after the lead time. Overwrite a number any time a container looks different.</div>
+      <div class="invnote">Each strain is tracked per form: capsules, powder (grams) and tablets. A serving is however many capsules you set per dose on the This week tab; 1 capsule = 500 mg, 1 g of powder = 2 capsules, one 300 mg tablet = 0.6. On-the-go doses burn capsules or tablets; at-home doses burn powder first. Orders you log arrive after the lead time. Overwrite a number any time a container looks different.</div>
       </details>
     </div>
 
@@ -648,7 +659,15 @@
     return u.replace(/y$/, "ie") + "s";
   }
   var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-  var SERVING = { day: 3, night: 3, late: 2 };
+  var SERVING = { day: 3, night: 3, late: 2, brk: 2 };   // default capsules a dose; each profile keeps its own in p.serve
+  function serveOf(p, slot){ var sv = p.serve || SERVING; return p.breakWeek ? sv.brk : sv[slot]; }
+  function capsText(n){ return n + (n === 1 ? " cap" : " caps"); }
+  function serveText(p){
+    var sv = p.serve || SERVING;
+    if (p.breakWeek) return capsText(sv.brk) + " a serving, Day and Night only";
+    return capsText(sv.day) + " Day \u00b7 " + capsText(sv.night) + " Night" + (p.hasLate ? " \u00b7 " + capsText(sv.late) + " Late (only if needed)" : "");
+  }
+  function servingCaps(){ return (P().serve || SERVING).day || SERVING.day; }   // "a serving" in price comparisons
   var LOW_AT = { default: 15, item: 5 };
   var SITE = (SNAP && SNAP.site) || "https://superspeciosa.com";
   var FORMS = { caps: "capsules", powder: "powder", tabs: "tablets", unit: "" };
@@ -714,6 +733,8 @@
       if (p.sigCount === undefined) p.sigCount = p.sigTwice ? 2 : 1;
       if (p.breakWeek === undefined) p.breakWeek = false;
       if (!p.saved) p.saved = [];
+      if (!p.serve) p.serve = {};
+      ["day","night","late","brk"].forEach(function(k){ var n = parseFloat(p.serve[k]); p.serve[k] = n > 0 ? Math.min(12, Math.round(n * 2) / 2) : SERVING[k]; });
       if (p.week && !p.weekId) p.weekId = "w" + Date.now().toString(36);
       delete p.sigTwice; delete p.kavaMode;
       // a week that names a product this catalog doesn't know (or an item) can't be kept
@@ -976,11 +997,16 @@
     document.getElementById("threeDose").checked = p.hasLate;
     document.getElementById("sigCount").value = p.sigCount;
     document.getElementById("breakWeek").checked = !!p.breakWeek;
+    document.getElementById("srvDay").value = p.serve.day;
+    document.getElementById("srvNight").value = p.serve.night;
+    document.getElementById("srvLate").value = p.serve.late;
+    document.getElementById("srvBrk").value = p.serve.brk;
+    document.getElementById("srvEq").textContent = "1 capsule = 500 mg, so " + capsText(p.serve.day) + " \u2248 " + (p.serve.day / 2) + " g of powder or " + Math.round(p.serve.day / TAB_CE) + " tablets. Stock, the reorder date and the buying math all follow these numbers.";
     updateVibe();
   }
 
   // ---------- week table + check-offs ----------
-  function servingFor(slot, key, p){ return isItem(key) ? 1 : ((p || P()).breakWeek ? 2 : SERVING[slot]); }
+  function servingFor(slot, key, p){ return isItem(key) ? 1 : serveOf(p || P(), slot); }
   function stockOf(k){ if (!state.stock[k]) state.stock[k] = { caps: 0, powder: 0, tabs: 0 }; return state.stock[k]; }
   function syncTotal(k){ var st = stockOf(k); state.inventory[k] = Math.max(0, Math.round((st.caps||0) + (st.powder||0) + (st.tabs||0))); }
   function addStock(k, form, ce){ var st = stockOf(k); st[form] = Math.max(0, (st[form] || 0) + ce); syncTotal(k); }
@@ -1038,7 +1064,7 @@
       var st = S[key], on = !!tchecks[sl[0]];
       var cls = st.color === "g" ? "pg" : st.color === "r" ? "pr" : "pw";
       return '<div class="slot' + (on ? " taken" : "") + '"><span class="chk' + (on ? " on" : "") + '" data-d="' + todayIdx + '" data-slot="' + sl[0] + '" data-key="' + key + '" title="mark taken">&#10003;</span>' +
-        '<div class="when">' + sl[1] + '</div><div class="what"><span class="pill ' + cls + '">' + (p.breakWeek ? 2 : SERVING[sl[0]]) + ' caps</span>' + st.name + '</div><div class="desc">' + st.desc + '</div></div>';
+        '<div class="when">' + sl[1] + '</div><div class="what"><span class="pill ' + cls + '">' + capsText(serveOf(p, sl[0])) + '</span>' + st.name + '</div><div class="desc">' + st.desc + '</div></div>';
     }).join("") + Object.keys(state.standing).filter(function(k){ return state.standing[k] > 0 && S[k]; }).map(function(k){
       var slot = "item:" + k, on = !!tchecks[slot], n = state.standing[k];
       return '<div class="slot kava' + (on ? " taken" : "") + '"><span class="chk' + (on ? " on" : "") + '" data-d="' + todayIdx + '" data-slot="' + slot + '" title="took it today">&#10003;</span><div class="when">Standing</div><div class="what"><span class="pill py">' + n + ' ' + units(k, n) + '</span>' + S[k].name + '</div><div class="desc">' + S[k].desc + '</div></div>';
@@ -1047,12 +1073,13 @@
     // settings gist
     var cg = document.getElementById("ctlGist");
     cg.innerHTML = '<span class="line">' + plain(vibeLabel(p.v)).split(".")[0] + '. Signature Reserve ' + (p.sigCount === 0 ? "none" : p.sigCount === 1 ? "once" : "twice") + ' \u00b7 ' + (effLate(p) ? "three-dose days" : "two-dose days") + (p.breakWeek ? ' \u00b7 break week' : '') + (p.weekStamp ? ' \u00b7 generated ' + p.weekStamp : '') + '</span>';
+    document.getElementById("rulesServ").textContent = serveText(p) + " \u00b7";
     renderStanding();
     resEl.style.display = "";
     renderSaved();
     var pos = p.v <= 33 ? "work-heavy" : p.v <= 66 ? "balanced" : "unwind";
     document.getElementById("stamp").textContent =
-      p.name + " · spectrum " + p.v + "/100 (" + pos + ")" + (p.breakWeek ? " · BREAK WEEK: 2 caps a serving, no Late, no Signature Reserve" : "") + (p.weekStamp && p.weekStamp !== "migrated" ? " · generated " + p.weekStamp : "") +
+      p.name + " · spectrum " + p.v + "/100 (" + pos + ")" + (p.breakWeek ? " · BREAK WEEK: " + capsText(p.serve.brk) + " a serving, no Late, no Signature Reserve" : "") + (p.weekStamp && p.weekStamp !== "migrated" ? " · generated " + p.weekStamp : "") +
       (function(){ var r = weekRating(p, p.weekId); return r && r.buzz !== null ? " · rated buzz " + r.buzz.toFixed(1) + " over " + r.nights + " night" + (r.nights > 1 ? "s" : "") : ""; })();
   }
 
@@ -1122,9 +1149,9 @@
     Object.keys(state.profiles).forEach(function(id){
       var p = state.profiles[id]; if (!p.week) return;
       var day = p.week[wd];
-      add(day.day, p.breakWeek ? 2 : SERVING.day, state.place.day);
-      add(day.night, p.breakWeek ? 2 : SERVING.night, state.place.night);
-      if (effLate(p) && day.late) add(day.late, p.breakWeek ? 2 : SERVING.late, state.place.late);
+      add(day.day, serveOf(p, "day"), state.place.day);
+      add(day.night, serveOf(p, "night"), state.place.night);
+      if (effLate(p) && day.late) add(day.late, serveOf(p, "late"), state.place.late);
     });
     Object.keys(state.standing).forEach(function(k){ if (state.standing[k] > 0 && S[k]) add(k, state.standing[k], "away"); });
     return out;
@@ -1397,9 +1424,9 @@
     Object.keys(state.profiles).forEach(function(id){
       var p = state.profiles[id]; if (!p.week) return;
       p.week.forEach(function(d){
-        add(d.day, p.breakWeek ? 2 : SERVING.day, state.place.day);
-        add(d.night, p.breakWeek ? 2 : SERVING.night, state.place.night);
-        if (effLate(p) && d.late) add(d.late, p.breakWeek ? 2 : SERVING.late, state.place.late);
+        add(d.day, serveOf(p, "day"), state.place.day);
+        add(d.night, serveOf(p, "night"), state.place.night);
+        if (effLate(p) && d.late) add(d.late, serveOf(p, "late"), state.place.late);
       });
     });
     Object.keys(state.standing).forEach(function(k){ if (state.standing[k] > 0 && S[k]) add(k, state.standing[k] * 7, "away"); });
@@ -1503,7 +1530,7 @@
       left += '</span>';
       var right = "";
       if (pr){
-        var servingCe = isItem(k) ? (S[k].servingUnits || 1) : 3;   // 3 caps = 1.5 g = 5 tablets
+        var servingCe = isItem(k) ? (S[k].servingUnits || 1) : servingCaps();   // a serving in capsule-equivalents
         function perServing(v){ return v.price / v.count * servingCe; }
         var capsV = pr.variants.filter(function(v){ return (v.form === "caps" || v.form === "unit") && v.count; });
         var powV  = pr.variants.filter(function(v){ return v.form === "powder" && v.count; });
@@ -1638,7 +1665,7 @@
   function spendOneTime(price, count, perDay, days){ return price * Math.max(1, Math.ceil(perDay * days / count)); }
   function buyOptions(k, perDay, soon, daysLeft, forms){
     var pr = currentProducts()[k]; if (!pr || !(perDay > 0)) return [];
-    var H = 365, need = perDay * H, servCe = isItem(k) ? (S[k].servingUnits || 1) : 3;
+    var H = 365, need = perDay * H, servCe = isItem(k) ? (S[k].servingUnits || 1) : servingCaps();
     var opts = [];
     pr.variants.filter(function(v){ return v.count && v.available && (!forms || forms.indexOf(v.form) !== -1); }).forEach(function(v){
       var used1 = Math.min(v.count, need);
@@ -2071,6 +2098,14 @@
   var vibeText = document.getElementById("vibeText");
   function updateVibe(){ vibeText.innerHTML = vibeLabel(+slider.value); }
   slider.addEventListener("input", updateVibe);
+  ["srvDay","srvNight","srvLate","srvBrk"].forEach(function(id){
+    document.getElementById(id).addEventListener("change", function(){
+      var p = P(), key = { srvDay: "day", srvNight: "night", srvLate: "late", srvBrk: "brk" }[id];
+      var n = parseFloat(this.value); if (!(n > 0)) n = SERVING[key];
+      p.serve[key] = Math.min(12, Math.round(n * 2) / 2);
+      saveState(); syncControls(); renderAll();
+    });
+  });
 
   // ---------- saved weeks ----------
   function weekSig(w){ return JSON.stringify(w); }
@@ -2140,7 +2175,7 @@
     if (act === "pdf"){
       if (!(window.jspdf && window.jspdf.jsPDF)){ alert("The PDF library didn't load (offline?)."); return; }
       var iso = new Date().toISOString().slice(0,10);
-      buildPDF(window.jspdf.jsPDF, { week: x.week, hasLate: x.hasLate, breakWeek: x.breakWeek, v: x.v, name: p.name }).save("Kratom Week " + iso + " " + p.name + " (" + (x.name || "saved") + ").pdf");
+      buildPDF(window.jspdf.jsPDF, { week: x.week, hasLate: x.hasLate, breakWeek: x.breakWeek, v: x.v, name: p.name, serve: p.serve }).save("Kratom Week " + iso + " " + p.name + " (" + (x.name || "saved") + ").pdf");
       return;
     }
     if (act === "use"){
@@ -2184,7 +2219,7 @@
   function plain(html){ var t = document.createElement("div"); t.innerHTML = html; return t.textContent; }
 
   function buildPDF(jsPDF, p){
-    var w = p.week, hasLate = effLate(p), v = p.v;
+    var w = p.week, hasLate = effLate(p), v = p.v, sv = p.serve || P().serve || SERVING;
     var doc = new jsPDF({unit:"pt", format:"letter"});
     var W = 612, M = 40, X0 = M, X1 = W - M, y = 64;
     var C = {ink:[43,43,40], green:[31,61,43], gray:[108,108,102], light:[246,244,238],
@@ -2296,8 +2331,8 @@
 
     var rules = [
       p.breakWeek
-        ? ["Break week:", "2 caps a serving, Day and Night only, no Signature Reserve. Every dose at least 6 hrs from the last. The point is to let tolerance reset \u2014 don't top up."]
-        : ["Servings:", "3 caps Day \u00b7 3 caps Night \u00b7 2\u20133 caps Late (only if needed) \u00b7 every dose at least 6 hrs from the last."],
+        ? ["Break week:", capsText(sv.brk) + " a serving, Day and Night only, no Signature Reserve. Every dose at least 6 hrs from the last. The point is to let tolerance reset \u2014 don't top up."]
+        : ["Servings:", serveText({ serve: sv, hasLate: hasLate, breakWeek: false }) + " \u00b7 every dose at least 6 hrs from the last."],
       ["Standing items:", "extracts, gummies and kava are dosed by serving, not by strain, so they never rotate. Never stack full servings of two things at once."],
       ["Guarantees:", "the reserve strain exactly as many days as selected, never back to back \u00b7 no strain on consecutive days in the same column \u00b7 no red repeats within 24 hrs in any direction \u00b7 nothing twice in one day."],
       ["If effects feel dulled:", "regenerate toward the other end of the spectrum or take a break day \u2014 never dose up."]
