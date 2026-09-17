@@ -461,6 +461,7 @@
         <div class="end right"><b>Unwound</b> buzz &amp; ease</div>
       </div>
       <div class="vibe" id="vibeText"></div>
+      <div class="hint">Three slots a day: a <b>Day</b> dose, a <b>Night</b> dose, and an optional <b>Late</b> dose for nights that need it. The slider decides which colours fill each slot; the rules keep any strain from repeating back to back. Untick Late for two-dose days.</div>
       <div class="opts">
         <label><input type="checkbox" id="threeDose" checked> Late column (three-dose days)</label>
         <label>Reserve strain:
@@ -1029,8 +1030,8 @@
     var resEl = document.getElementById("result");
     if (!p.week){
       resEl.style.display = "none";
-      document.getElementById("ctlGist").innerHTML = '<span class="line">No week planned yet.</span><button class="cta" id="ctaGen">Plan this week</button>';
-      document.getElementById("ctaGen").addEventListener("click", function(){ document.getElementById("gen").click(); });
+      document.getElementById("ctlGist").innerHTML = '<span class="line">No week planned yet. Set how the week should feel, check the servings, then generate it.</span>';
+      document.querySelector('details[data-more="ctl"]').open = true;
       return;
     }
     var hasLate = effLate(p);
@@ -2025,7 +2026,7 @@
     var ordinary = state.myStrains.filter(function(k){ return !S[k].reserve; }).length;
     if (ordinary < 3){ alert("Switch on at least three ordinary strains (reserves don't count) so a week can rotate without repeats."); return; }
     state.setup = true; settingsOpen = false; saveState(); renderSettings(); renderAll();
-    if (!P().week) document.getElementById("gen").click();
+    if (!P().week){ var ctl = document.querySelector('details[data-more="ctl"]'); ctl.open = true; ctl.scrollIntoView({ behavior: "smooth", block: "start" }); }
   });
   document.getElementById("setupPeople").addEventListener("click", function(e){
     var el = e.target;

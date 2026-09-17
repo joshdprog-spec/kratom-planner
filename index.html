@@ -89,6 +89,26 @@
   .t.win { border-color: var(--green); }
   .asof { text-align: center; font-size: 11.5px; color: var(--ink-faint); margin-top: 10px; font-style: italic; }
 
+  /* rotation */
+  .spectrum { max-width: 720px; margin: 0 auto 18px; }
+  .spectrum .bar { height: 10px; border-radius: 6px; background: linear-gradient(90deg, #e8e4d8 0%, #5a9e63 50%, #c05a44 100%); border: 1px solid rgba(0,0,0,0.35); }
+  .spectrum .ends { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-dim); margin-top: 8px; }
+  .spectrum .ends b { color: var(--ink); display: block; letter-spacing: 1.5px; }
+  .spectrum .ends span:last-child { text-align: right; }
+  .vibes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 30px; }
+  .vibes .v { font-size: 12.5px; color: var(--ink-dim); padding: 10px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--tint-deep); line-height: 1.45; }
+  .vibes .v b { display: block; font-family: var(--serif); font-size: 17px; color: var(--gold); margin-bottom: 3px; }
+  .h3 { font-family: var(--serif); font-size: 22px; font-weight: 600; margin: 0 0 10px; }
+  table.sample { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--tint-deep); font-size: 13px; }
+  table.sample th { background: var(--tint-deep); color: var(--gold); font-size: 10px; text-transform: uppercase; letter-spacing: 1.6px; padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+  table.sample td { padding: 8px 10px; border-top: 1px solid var(--line); white-space: nowrap; }
+  table.sample tbody tr:nth-child(even) td { background: var(--tint-ink); }
+  table.sample td.dn { font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--gold); font-weight: 600; }
+  table.sample .pill { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.8px; padding: 2px 6px; border-radius: 5px; margin-right: 6px; vertical-align: 1px; }
+  .pw { background: #f2ecdd; color: #14100a; border: 1px solid #14100a; }
+  #savings .tally { margin: 0 0 8px; max-width: none; }
+  #savings .asof { text-align: left; margin: 0 0 24px; }
+
   /* sections */
   section { padding: 44px 0; border-top: 1px solid var(--line); }
   h2 { font-family: var(--serif); font-size: 34px; font-weight: 600; margin: 0 0 6px; line-height: 1.1; text-wrap: balance; }
@@ -137,6 +157,10 @@
     h2 { font-size: 28px; }
     .two { grid-template-columns: 1fr; }
     section { padding: 34px 0; }
+    .vibes { grid-template-columns: 1fr 1fr; }
+    table.sample { font-size: 12px; }
+    table.sample td { white-space: normal; padding: 7px 8px; }
+    table.sample .pill { display: block; width: max-content; margin: 0 0 2px; }
   }
 </style>
 </head>
@@ -145,6 +169,7 @@
 <nav class="nav"><div class="wrap">
   <a class="brand" href="#top"><span class="name">Weekly <em>Kratom</em> Planner</span></a>
   <div class="links">
+    <a class="hide" href="#rotation">The rotation</a>
     <a class="hide" href="#what">What it does</a>
     <a class="hide" href="#why">Why Super Speciosa</a>
     <a class="hide" href="#faq">FAQ</a>
@@ -156,20 +181,66 @@
 
 <header class="hero" id="top"><div class="wrap">
   <div class="eyebrow">Free &middot; for Super Speciosa customers &middot; no account</div>
-  <h1>Plan the week. Never run out.<br>Pay the <em>least</em> the store will take.</h1>
-  <p class="sub">A weekly strain rotation, a stock count that burns down on its own, and buying advice that prices every size, subscription and sale against how fast you actually go through each strain.</p>
+  <h1>Plan the week. Take it.<br><em>Restock</em> at the best price.</h1>
+  <p class="sub">Say how the week should feel and it lays out day, night and late doses across your strains so nothing repeats back to back. From that schedule it counts your shelf down, names the day to order, and prices every size, subscription and sale.</p>
   <div class="cta">
     <a class="btn primary" href="Weekly%20Kratom%20Planner.html">Open the planner</a>
-    <a class="btn ghost" href="#what">See what it does</a>
+    <a class="btn ghost" href="#rotation">See how it works</a>
   </div>
   <div class="fine">Works in any browser, phone or PC. Everything you enter stays on your device.</div>
-  <div class="tally" id="money"></div>
-  <div class="asof" id="asof"></div>
 </div></header>
+
+<section id="rotation"><div class="wrap">
+  <div class="kicker">The rotation</div>
+  <h2>One slider sets the week. The rules keep it honest.</h2>
+  <p class="intro">Every strain you keep is a white, a green or a red. Whites and greens lean energising, reds lean calm. The slider decides which colours fill the Day, Night and Late slots; the generator then fills seven days so the same strain never lands in the same slot two days running, no red repeats within a day in either direction, and your reserve strain appears exactly as often as you choose. Nudge the slider and generate again until the week reads right.</p>
+  <div class="spectrum">
+    <div class="bar"></div>
+    <div class="ends"><span><b>Locked in</b> work &amp; drive</span><span><b>Unwound</b> buzz &amp; ease</span></div>
+  </div>
+  <div class="vibes">
+    <div class="v"><b>Full grind</b> Whites all day, greens through the evening, one red to land at the end.</div>
+    <div class="v"><b>Work-heavy</b> Energising days, steady green evenings, red only at the Late slot.</div>
+    <div class="v"><b>Balanced, sharp</b> Mixed white and green days, evenings split between greens and reds.</div>
+    <div class="v"><b>Balanced, mellow</b> Softer evenings, mostly reds with the occasional easy green.</div>
+    <div class="v"><b>Unwinding</b> Green days, red evenings and nights.</div>
+    <div class="v"><b>Full unwind</b> Mellow greens by day, deep reds from evening on.</div>
+  </div>
+  <div class="two">
+    <div>
+      <h3 class="h3">A week it made, set to balanced</h3>
+      <table class="sample">
+        <thead><tr><th>Day</th><th>Day</th><th>Night</th><th>Late</th></tr></thead>
+        <tbody>
+          <tr><td class="dn">Sunday</td><td><span class="pill pw">DAY</span>White Thai</td><td><span class="pill pr">NGT</span>Red Maeng Da</td><td><span class="pill pr">LATE</span>Red Borneo</td></tr>
+          <tr><td class="dn">Monday</td><td><span class="pill pg">DAY</span>Green Maeng Da</td><td><span class="pill pr">NGT</span>Super Red</td><td><span class="pill pr">LATE</span>Red Maeng Da</td></tr>
+          <tr><td class="dn">Tuesday</td><td><span class="pill pw">DAY</span>White Maeng Da</td><td><span class="pill pr">NGT</span>Red Bali</td><td><span class="pill pr">LATE</span>Red Borneo</td></tr>
+          <tr><td class="dn">Wednesday</td><td><span class="pill pg">DAY</span>Green Malay</td><td><span class="pill pr">NGT</span>Red Maeng Da</td><td><span class="pill pr">LATE</span>Red Bali</td></tr>
+          <tr><td class="dn">Thursday</td><td><span class="pill pw">DAY</span>White Thai</td><td><span class="pill pr">NGT</span>Red Borneo</td><td><span class="pill pr">LATE</span>Red Maeng Da</td></tr>
+          <tr><td class="dn">Friday</td><td><span class="pill pg">DAY</span>Signature Reserve</td><td><span class="pill pr">NGT</span>Red Bali</td><td><span class="pill pr">LATE</span>Red Borneo</td></tr>
+          <tr><td class="dn">Saturday</td><td><span class="pill pw">DAY</span>White Maeng Da</td><td><span class="pill pr">NGT</span>Super Red</td><td><span class="pill pr">LATE</span>Red Bali</td></tr>
+        </tbody>
+      </table>
+      <p class="src">Late is only if needed. Tap the circle on a dose in the planner when you take it; the journal and the shelf count follow.</p>
+    </div>
+    <div>
+      <h3 class="h3">What it guarantees</h3>
+      <ul class="clean">
+        <li><b>No strain in the same slot two days running</b>, and nothing twice in one day.</li>
+        <li><b>No red repeated within 24 hours</b> in either direction, night to late or late to the next night.</li>
+        <li><b>The reserve strain exactly as often as you choose</b>, once or twice a week, never on neighbouring days.</li>
+        <li><b>Late is optional.</b> Untick it for two-dose days and the rules still hold.</li>
+        <li><b>Servings are yours.</b> Capsules per dose for day, night, late and break weeks, set per person. The shelf count and the buying math follow them.</li>
+        <li><b>A break week</b> drops to smaller servings, greens by day and reds by night, with no reserve strain. If effects feel dulled, that or a nudge of the slider is the move, never a bigger dose.</li>
+      </ul>
+      <p class="src">Rotation is the planner's organising rule, not a medical claim. Whether it suits you is between you and your healthcare provider.</p>
+    </div>
+  </div>
+</div></section>
 
 <section id="what"><div class="wrap">
   <div class="kicker">What it does</div>
-  <h2>Three things you were doing by hand, or not doing at all.</h2>
+  <h2>Plan, take, restock. Three chores, one loop.</h2>
   <p class="intro">Open it once a day. Tap the doses you took. The rest takes care of itself.</p>
   <div class="cards">
     <div class="card">
@@ -188,11 +259,13 @@
 </div></section>
 
 <section id="savings"><div class="wrap">
+  <div class="kicker">Then it keeps the shelf</div>
+  <h2>Because it knows your week, it knows your usage. So it can do the buying math.</h2>
+  <div class="tally" id="money"></div>
+  <div class="asof" id="asof"></div>
   <div class="two">
     <div>
-      <div class="kicker">What it saves you</div>
-      <h2>The same capsules, for a lot less.</h2>
-      <p class="intro">The store's own prices make the case. A bottle bought at list price whenever you run out is the most expensive way to buy the exact same product. The figures at the top of this page are computed from the live catalog: a three-dose day of standard capsules, bought as the smallest bottle at list, against the cheapest price per capsule the store offers on any size or subscription cadence.</p>
+      <p class="intro">The store's own prices make the case. A bottle bought at list price whenever you run out is the most expensive way to buy the exact same product. The figures above are computed from the live catalog: a three-dose day of standard capsules, bought as the smallest bottle at list, against the cheapest price per capsule the store offers on any size or subscription cadence.</p>
       <p class="intro">Your own number depends on which strains you keep, how you split capsules and powder, and how you like to buy: least cash out over the next three months, least over a year, or best price per serving. The planner shows that figure on its Stock &amp; orders tab, next to what you'd pay at list.</p>
     </div>
     <div class="rules">
