@@ -1631,8 +1631,9 @@
     var opts = buyOptions(k, perDay, soon, daysLeft, forms);
     if (!opts.length) return null;
     var minScore = Math.min.apply(null, opts.map(scoreOf));
-    var ties = opts.filter(function(o){ return scoreOf(o) <= minScore * 1.05; });
-    ties.sort(function(a, b){ return a.cashNow - b.cashNow; });
+    // a real tie only (within 1%); then less up front, then less over the year
+    var ties = opts.filter(function(o){ return scoreOf(o) <= minScore * 1.01; });
+    ties.sort(function(a, b){ return (a.cashNow - b.cashNow) || (a.annual - b.annual); });
     var pick = ties[0];
     var cheapestNow = opts.slice().sort(function(a,b){ return a.cashNow - b.cashNow; })[0];
     var cheapestTime = opts.slice().sort(function(a,b){ return a.perServ - b.perServ; })[0];
@@ -1794,7 +1795,7 @@
       }
       if (txt) lines.push(txt);
     });
-    if (lines.length){ box.innerHTML = '<details><summary>What to buy, per strain (tap a strain for the math)</summary><div><div class="no" style="border:none;padding:4px 0 6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Picks follow your buying style. Ties within 5% go to whichever asks for less up front.</div>' + lines.join("") + '</div></details>'; }
+    if (lines.length){ box.innerHTML = '<details><summary>What to buy, per strain (tap a strain for the math)</summary><div><div class="no" style="border:none;padding:4px 0 6px">Subscribe &amp; Save is ' + Math.round(SUB_DISCOUNT*100) + '% off every size, delivered every 2, 4 or 6 weeks or every 2 or 3 months. Picks follow your buying style. Real ties go to whichever asks for less up front, then to the lower yearly cost.</div>' + lines.join("") + '</div></details>'; }
   }
 
   function renderOrders(){
