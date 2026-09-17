@@ -75,6 +75,8 @@
   .prename.theme { font-size: 15px; line-height: 1; padding: 6px 10px; }
   .syncnote { text-align: right; font-size: 11px; color: var(--ink-faint); margin: -8px 0 8px; }
   .syncnote:empty { display: none; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 16px); opacity: 0; pointer-events: none; background: var(--card2); color: var(--ink); border: 1px solid var(--gold-soft); border-radius: 12px; padding: 10px 16px; font-size: 13.5px; line-height: 1.4; box-shadow: var(--shadow); z-index: 50; max-width: 90vw; text-align: center; transition: opacity .2s, transform .2s; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
   /* ---------- tabs ---------- */
   .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--tint-deep); border: 1px solid var(--line); margin-bottom: 16px; }
@@ -231,6 +233,10 @@
   .people { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
   .people .pchip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--tint-deep); font-size: 13px; }
   .people .pchip .x { cursor: pointer; color: var(--ink-faint); padding: 0 4px; } .people .pchip .x:hover { color: var(--red); }
+  .people .pchip input { width: 120px; padding: 3px 8px; font-size: 13px; border-radius: 6px; }
+  .people .newp { display: inline-flex; align-items: center; gap: 6px; }
+  .people .newp input { width: 130px; padding: 5px 8px; font-size: 13px; border-radius: 999px; }
+  .baktext { width: 100%; min-height: 90px; margin-top: 8px; font-family: inherit; font-size: 12px; color: var(--ink); background: var(--field); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px; }
   .standrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--line); }
   .standrow .nm { font-weight: 600; color: var(--ink); }
   .standrow .x { margin-left: auto; cursor: pointer; color: var(--ink-faint); }
@@ -380,6 +386,7 @@
     .tally { grid-template-columns: 1fr 1fr; gap: 8px; }
     .tally .n { font-size: 26px; }
     .fact { font-size: 17px; }
+    .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
 
   /* ---------- print: the week table, clean ---------- */
@@ -451,6 +458,7 @@
       <div class="invsub">Backup</div>
       <div class="orow"><button class="savebtn" id="bakExport">Save a backup file</button><button class="savebtn" id="bakCopy">Copy backup text</button><label class="savebtn filebtn">Restore from file<input type="file" id="bakImport" accept="application/json,.json"></label></div>
       <div class="hint">Your data lives only in this browser. A backup moves it to another phone or PC, or brings it back after clearing the browser.</div>
+      <textarea class="baktext" id="bakText" style="display:none" readonly></textarea>
       <div class="opts" id="ageRow"><label><input type="checkbox" id="ageOk"> I'm 21 or older, and kratom is legal where I live.</label></div>
       <div class="btns"><button id="setupDone">Done</button></div>
     </div>
@@ -468,6 +476,7 @@
       </div>
     </header>
     <div class="syncnote" id="syncNote"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <nav class="tabs" aria-label="Sections">
       <button class="tab active" data-tab="week" id="tabWeek"><span>This week</span></button>
@@ -731,8 +740,9 @@
 
   // ---------- state ----------
   function blankProfile(name){
-    return { name: name, v: 50, hasLate: false, sigCount: 1, breakWeek: false,
-             week: null, weekStamp: null, checks: {}, journal: {} };
+    return { name: name, v: 50, hasLate: false, doses: 2, days: ALL_DAYS.slice(), sigCount: 1, breakWeek: false,
+             serve: { day: SERVING.day, night: SERVING.night, late: SERVING.late, brk: SERVING.brk },
+             week: null, weekStamp: null, checks: {}, journal: {}, saved: [] };
   }
   function blankInventory(){ return {}; }
   // bring older saved profiles up to date: sigTwice -> sigCount, and drop
@@ -800,6 +810,13 @@
     return normalize(st);
   }
   var state = loadState();
+  // in-page notice; browser dialogs (alert/prompt) are blocked inside claude.ai
+  var toastTimer = null;
+  function notify(msg){
+    var el = document.getElementById("toast"); if (!el) return;
+    el.textContent = msg; el.className = "toast show";
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.className = "toast"; }, 4500);
+  }
   // "Who am I on this device" is a per-device preference, not part of the shared state:
   // a partner opening the same planner on their phone should open as themselves.
   function deviceWho(){ try { return localStorage.getItem("kratomPlannerWho"); } catch(e){ return null; } }
@@ -1027,15 +1044,12 @@
     var el = e.target.closest ? e.target.closest("button[data-profile]") : null;
     if (el) switchProfile(el.getAttribute("data-profile"));
   });
-  function askName(label, current){
-    var nm = null;
-    try { nm = window.prompt(label, current || ""); } catch(e){ nm = null; }
-    if (nm === null && typeof window.prompt !== "function"){ alert("Naming needs a dialog this browser doesn't support; use Settings instead."); return null; }
-    return nm && nm.trim() ? nm.trim().slice(0, 16) : null;
-  }
+  function cleanName(v){ v = String(v || "").trim().slice(0, 16); return v || null; }
   document.getElementById("renameBtn").addEventListener("click", function(){
-    var nm = askName("Name for this profile:", P().name);
-    if (nm){ P().name = nm; saveState(); renderProfileBar(); renderSettings(); }
+    settingsOpen = true; renderSettings();
+    var f = document.querySelector('#setupPeople input[data-rename="' + state.activeProfile + '"]');
+    document.getElementById("setupPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (f){ f.focus(); f.select(); }
   });
   function addProfile(name){
     var id = "p" + Date.now().toString(36);
@@ -2058,10 +2072,10 @@
   function savePdf(doc, name){
     if (!IN_ARTIFACT){ doc.save(name); return; }
     window.claude.use("downloads").then(function(dl){
-      if (!dl){ alert("Downloads aren't available here. Open the planner on the website to save a PDF."); return; }
+      if (!dl){ notify("Downloads aren't available here. Open the planner on the website to save a PDF."); return; }
       dl.save({ filename: name, data: doc.output("blob") }).catch(function(e){
         if (e && e.code === "declined") return;
-        alert("Couldn't save the PDF here (" + (e && e.code ? e.code : "unknown") + ").");
+        notify("Couldn't save the PDF here (" + (e && e.code ? e.code : "unknown") + ").");
       });
     });
   }
@@ -2090,10 +2104,12 @@
     var wrap = document.createElement("div"); wrap.className = "people";
     Object.keys(state.profiles).forEach(function(id){
       var c = document.createElement("span"); c.className = "pchip";
-      c.innerHTML = '<span>' + state.profiles[id].name.replace(/</g,"&lt;") + '</span>' + (Object.keys(state.profiles).length > 1 ? '<span class="x" data-del="' + id + '" title="remove">\u2715</span>' : "");
+      c.innerHTML = '<input type="text" maxlength="16" data-rename="' + id + '" value="' + state.profiles[id].name.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;") + '" title="Edit this name">' + (Object.keys(state.profiles).length > 1 ? '<span class="x" data-del="' + id + '" title="remove">\u2715</span>' : "");
       wrap.appendChild(c);
     });
-    var add = document.createElement("button"); add.className = "savebtn"; add.id = "addPerson"; add.textContent = "+ add a person"; wrap.appendChild(add);
+    var add = document.createElement("span"); add.className = "newp";
+    add.innerHTML = '<input type="text" id="newPersonName" maxlength="16" placeholder="new person\u2019s name"><button class="savebtn" id="addPerson">+ add</button>';
+    wrap.appendChild(add);
     ppl.appendChild(wrap);
     var sp = document.getElementById("strainPick"); sp.innerHTML = "";
     STRAIN_KEYS.forEach(function(k){
@@ -2107,15 +2123,15 @@
   document.getElementById("settingsBtn").addEventListener("click", function(){ settingsOpen = !settingsOpen; renderSettings(); if (settingsOpen) document.getElementById("setupPanel").scrollIntoView({ behavior: "smooth", block: "start" }); });
   document.getElementById("setupDone").addEventListener("click", function(){
     var ordinary = state.myStrains.filter(function(k){ return !S[k].reserve; }).length;
-    if (ordinary < 3){ alert("Switch on at least three ordinary strains (reserves don't count) so a week can rotate without repeats."); return; }
+    if (ordinary < 3){ notify("Switch on at least three ordinary strains (reserves don't count) so a week can rotate without repeats."); return; }
     if (!state.setup){
-      if (!document.getElementById("ageOk").checked){ alert("Please confirm that you're 21 or older and that kratom is legal where you live."); return; }
+      if (!document.getElementById("ageOk").checked){ notify("Please confirm that you're 21 or older and that kratom is legal where you live."); return; }
       state.confirmed = todayKey();
       var doses = +document.querySelector('input[name="howLate"]:checked').value;
       var days = [].map.call(document.querySelectorAll("#howDays input"), function(c){ return c.checked; });
-      if (!days.some(Boolean)){ alert("Tick at least one day you take it."); return; }
+      if (!days.some(Boolean)){ notify("Tick at least one day you take it."); return; }
       var d = parseFloat(document.getElementById("howDay").value), n = parseFloat(document.getElementById("howNight").value), l = parseFloat(document.getElementById("howLateN").value);
-      if (!(d > 0) || (doses >= 2 && !(n > 0)) || (doses === 3 && !(l > 0))){ alert("Enter how many capsules you take for each dose. Half capsules are fine; if you use powder, 1 g counts as 2 capsules."); return; }
+      if (!(d > 0) || (doses >= 2 && !(n > 0)) || (doses === 3 && !(l > 0))){ notify("Enter how many capsules you take for each dose. Half capsules are fine; if you use powder, 1 g counts as 2 capsules."); return; }
       var half = function(x){ return Math.min(12, Math.max(0.5, Math.round(x * 2) / 2)); };
       var p0 = P(); p0.doses = doses; p0.hasLate = doses === 3; p0.days = days;
       setDeviceWho(state.activeProfile);
@@ -2131,8 +2147,22 @@
   });
   document.getElementById("setupPeople").addEventListener("click", function(e){
     var el = e.target;
-    if (el.id === "addPerson"){ var nm = askName("Name for the new person:", ""); if (nm) { addProfile(nm); renderSettings(); } return; }
+    if (el.id === "addPerson"){
+      var nm = cleanName(document.getElementById("newPersonName").value);
+      if (!nm){ notify("Type the new person\u2019s name first."); document.getElementById("newPersonName").focus(); return; }
+      addProfile(nm); renderSettings(); notify(nm + " added. Set their doses and days under the slider."); return;
+    }
     var del = el.getAttribute && el.getAttribute("data-del"); if (del){ removeProfile(del); renderSettings(); }
+  });
+  document.getElementById("setupPeople").addEventListener("change", function(e){
+    var id = e.target.getAttribute && e.target.getAttribute("data-rename"); if (!id || !state.profiles[id]) return;
+    var nm = cleanName(e.target.value);
+    if (!nm){ e.target.value = state.profiles[id].name; return; }
+    state.profiles[id].name = nm; saveState(); renderProfileBar(); renderWeek();
+  });
+  document.getElementById("setupPeople").addEventListener("keydown", function(e){
+    if (e.key === "Enter" && e.target.id === "newPersonName"){ e.preventDefault(); document.getElementById("addPerson").click(); }
+    if (e.key === "Enter" && e.target.getAttribute && e.target.getAttribute("data-rename")){ e.preventDefault(); e.target.blur(); }
   });
   document.getElementById("strainPick").addEventListener("change", function(e){
     var k = e.target.getAttribute && e.target.getAttribute("data-strain"); if (!k) return;
@@ -2148,8 +2178,8 @@
     var name = "kratom-planner-backup-" + todayKey() + ".json";
     if (IN_ARTIFACT){   // inside claude.ai a page can only hand over a file through the downloads capability
       window.claude.use("downloads").then(function(dl){
-        if (!dl){ alert("Downloads aren't available here. Use 'Copy backup text' instead."); return; }
-        dl.save({ filename: name, data: backupText() }).catch(function(){ alert("Download declined. Use 'Copy backup text' instead."); });
+        if (!dl){ notify("Downloads aren't available here. Use 'Copy backup text' instead."); return; }
+        dl.save({ filename: name, data: backupText() }).catch(function(){ notify("Download declined. Use 'Copy backup text' instead."); });
       });
       return;
     }
@@ -2157,12 +2187,13 @@
       var blob = new Blob([backupText()], { type: "application/json" });
       var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
       document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    } catch(e){ alert("This browser blocked the download. Use 'Copy backup text' instead."); }
+    } catch(e){ notify("This browser blocked the download. Use 'Copy backup text' instead."); }
   });
   document.getElementById("bakCopy").addEventListener("click", function(){
     var t = backupText();
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function(){ alert("Backup copied. Paste it somewhere safe."); }, function(){ window.prompt("Copy this backup text:", t); });
-    else { try { window.prompt("Copy this backup text:", t); } catch(e){} }
+    function showText(){ var ta = document.getElementById("bakText"); ta.style.display = ""; ta.value = t; ta.focus(); ta.select(); notify("Copy the text below and paste it somewhere safe."); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function(){ notify("Backup copied. Paste it somewhere safe."); }, showText);
+    else showText();
   });
   document.getElementById("bakImport").addEventListener("change", function(){
     var f = this.files && this.files[0]; if (!f) return;
@@ -2172,8 +2203,8 @@
         var j = JSON.parse(r.result); var st = j.state || j;
         if (!st.profiles) throw new Error("no profiles");
         state = normalize(st); applyDeviceProfile(); saveLocal(); applyBurnAndArrivals(); syncControls(); renderSettings(); renderAll();
-        alert("Restored.");
-      } catch(e){ alert("That file isn't a planner backup."); }
+        notify("Restored.");
+      } catch(e){ notify("That file isn't a planner backup."); }
     };
     r.readAsText(f);
   });
@@ -2258,7 +2289,7 @@
   }
   document.getElementById("saveWeek").addEventListener("click", function(){
     var p = P();
-    if (!p.week){ alert("Generate a week first."); return; }
+    if (!p.week){ notify("Generate a week first."); return; }
     var name = document.getElementById("saveName").value.trim() || ("Week of " + (p.weekStamp || todayKey()));
     var sig = weekSig(p.week);
     var existing = p.saved.filter(function(x){ return weekSig(x.week) === sig; })[0];
@@ -2275,7 +2306,7 @@
     if (!x) return;
     if (act === "del"){ p.saved = p.saved.filter(function(y){ return y.id !== id; }); saveState(); renderSaved(); return; }
     if (act === "pdf"){
-      if (!(window.jspdf && window.jspdf.jsPDF)){ alert("The PDF library didn't load (offline?)."); return; }
+      if (!(window.jspdf && window.jspdf.jsPDF)){ notify("The PDF library didn't load (offline?)."); return; }
       var iso = new Date().toISOString().slice(0,10);
       savePdf(buildPDF(window.jspdf.jsPDF, { week: x.week, hasLate: x.hasLate, doses: x.doses || (x.hasLate ? 3 : 2), days: x.days || ALL_DAYS, breakWeek: x.breakWeek, v: x.v, name: p.name, serve: p.serve }), "Kratom Week " + iso + " " + p.name + " (" + (x.name || "saved") + ").pdf");
       return;
@@ -2298,7 +2329,7 @@
     p.v = +slider.value;
     p.doses = +document.getElementById("doses").value; p.hasLate = p.doses === 3;
     p.days = [].map.call(document.querySelectorAll("#dayPick input"), function(c){ return c.checked; });
-    if (!p.days.some(Boolean)){ alert("Tick at least one day you take it."); return; }
+    if (!p.days.some(Boolean)){ notify("Tick at least one day you take it."); return; }
     p.sigCount = +document.getElementById("sigCount").value;
     p.breakWeek = document.getElementById("breakWeek").checked;
     var seed = Date.now() & 0x7fffffff;
@@ -2306,9 +2337,9 @@
     if (!w && p.doses === 3){
       // too few strains for three distinct doses a day: fall back to two
       w = generate(p.v, false, p.sigCount, seed, p.breakWeek, 2, p.days);
-      if (w){ p.doses = 2; p.hasLate = false; document.getElementById("doses").value = 2; alert("Not enough strains switched on for a Late dose, so this is a two-dose week. Switch on more strains in Settings to get Late back."); }
+      if (w){ p.doses = 2; p.hasLate = false; document.getElementById("doses").value = 2; notify("Not enough strains switched on for a Late dose, so this is a two-dose week. Switch on more strains in Settings to get Late back."); }
     }
-    if (!w){ alert("Couldn't build a valid week from the strains you have switched on. Switch on a couple more in Settings, or nudge the slider."); return; }
+    if (!w){ notify("Couldn't build a valid week from the strains you have switched on. Switch on a couple more in Settings, or nudge the slider."); return; }
     p.week = w;
     p.weekId = "w" + Date.now().toString(36);
     p.weekStamp = new Date().toLocaleDateString();
@@ -2479,9 +2510,9 @@
 
   document.getElementById("pdfBtn").addEventListener("click", function(){
     var p = P();
-    if (!p.week){ alert("Generate a week first."); return; }
+    if (!p.week){ notify("Generate a week first."); return; }
     if (!(window.jspdf && window.jspdf.jsPDF)){
-      alert("The PDF library didn't load (offline?). Opening the print dialog instead \u2014 choose 'Save as PDF'.");
+      notify("The PDF library didn't load (offline?). Opening the print dialog instead \u2014 choose 'Save as PDF'.");
       window.print(); return;
     }
     var pos = p.v <= 33 ? "work-heavy" : p.v <= 66 ? "balanced" : "unwind";

@@ -44,6 +44,7 @@ A single-file web app (`Weekly Kratom Planner.html`) for planning a weekly krato
 - Edits were applied with Python scripts (exact-string `rep()` with asserts) because Bash heredocs mangle `\u` escapes and quotes; write scripts to the scratchpad with the Write tool and run them. After every edit: extract the inline script and `node --check` it, then `python build-artifact.py`.
 - Beware name collisions inside the IIFE (a `poolsFor` clash broke Generate once; a stale `currentProducts` pair overrode the new one). A crude "called-but-not-defined" scan is in the session history.
 - Panel fade-ins must not use `animation-fill-mode: both` (throttled tabs stay invisible).
+- **No browser dialogs.** `alert`, `prompt`, `confirm` and `window.print` are blocked inside the claude.ai artifact sandbox and fail silently. Use `notify(msg)` (in-page toast), inline inputs (rename and add-person live in Settings), and `savePdf()` (downloads capability inside the artifact, plain `doc.save` elsewhere). Print is hidden inside the artifact.
 - Promo dates are in the store's Eastern time; `shortDate()` formats with `America/New_York`.
 - Test server truncation: check `document.scripts[...].textContent.length` before asserting anything.
 - The store's product JSON allows CORS (`*`); the home page does not.
