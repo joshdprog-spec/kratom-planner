@@ -212,6 +212,13 @@
   .invrow > span:first-child { min-width: 120px; }
   .invrow.quiet { color: var(--cream-dim); }
   .hint { text-align: center; font-size: 11px; color: var(--cream-dim); line-height: 1.5; padding: 6px 10px 10px; }
+  .stockrow { margin-bottom: 6px; }
+  #stkAdd {
+    font-size: 10px; padding: 7px 16px; border-radius: 999px;
+    background: transparent; color: var(--gold); border: 1px solid var(--gold-soft);
+  }
+  #stkAdd:hover { background: rgba(201,162,90,0.1); }
+  .invsub { text-align: center; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--cream-dim); margin: 14px 0 4px; }
   .hint:empty { display: none; }
   .invrow .pair { display: inline-flex; align-items: center; gap: 5px; font-size: 9.5px; color: var(--cream-dim); white-space: nowrap; flex-shrink: 0; }
   .invrow .pair .pair { margin-left: 10px; }
@@ -473,10 +480,24 @@
     </div>
 
     <div class="panel inventory" id="invPanel">
-      <h2>Inventory &mdash; shared, in capsules / gummies</h2>
+      <h2>Inventory &mdash; what's on the shelf</h2>
+      <div class="orow stockrow">
+        <label>Strain <select id="stkKey"></select></label>
+        <label>Container <select id="stkSize"></select></label>
+        <label>How many <input type="number" id="stkQty" min="1" step="1" value="1"></label>
+        <label>Fill <select id="stkFill">
+          <option value="1">sealed / full</option>
+          <option value="0.75">about &frac34;</option>
+          <option value="0.5">about half</option>
+          <option value="0.25">about &frac14;</option>
+          <option value="0.1">almost empty</option>
+        </select></label>
+        <button id="stkAdd">Add to stock</button>
+      </div>
       <div class="hint" id="invHint"></div>
+      <div class="invsub">Estimate on hand</div>
       <div class="invgrid" id="invGrid"></div>
-      <div class="invnote">Estimated stock on hand, in capsules or grams (1 cap = 0.5 g; either box updates the other). Burns down every day from the schedule (kava from its check-off). Orders you log below arrive after the lead time. Edit any number to correct it.</div>
+      <div class="invnote">Add each bottle or bag above and the app keeps this estimate: it burns down every day from the schedule (kava from its check-off), and orders you log arrive after the lead time. The numbers are capsules (kava: gummies); 1 cap = 0.5 g, so powder shows in grams too. Overwrite a number any time a bottle looks different.</div>
     </div>
 
     <div class="panel orders" id="ordPanel">
@@ -980,11 +1001,39 @@
         '</span><span class="pair">' + inputs + '</span>';
       g.appendChild(row);
     });
+    fillStockForm();
     var anyTracked = ORDER.some(function(k){ return state.tracked[k]; });
     document.getElementById("invHint").textContent = anyTracked ? "" :
-      "Start by entering what's on the shelf: bottles in capsules, bags in grams. Strains you leave at zero stay quiet until you stock them.";
+      "Add each bottle or bag you have. Sealed ones are full; for an open one, pick a rough fill. Strains you don't add stay quiet.";
     renderSupplier();
   }
+  function fillStockForm(){
+    var ks = document.getElementById("stkKey");
+    if (!ks.options.length) ORDER.forEach(function(kk){ var o = document.createElement("option"); o.value = kk; o.textContent = S[kk].name; ks.appendChild(o); });
+    var key = ks.value;
+    var ss = document.getElementById("stkSize"); var keep = ss.value; ss.innerHTML = "";
+    sizesFor(key).forEach(function(x){ var o = document.createElement("option"); o.value = x.id; o.textContent = x.label.replace("ct", " count").replace("powder", "bag"); ss.appendChild(o); });
+    if (keep && [].some.call(ss.options, function(o){ return o.value === keep; })) ss.value = keep;
+  }
+  document.getElementById("stkKey").addEventListener("change", fillStockForm);
+  document.getElementById("stkAdd").addEventListener("click", function(){
+    var key = document.getElementById("stkKey").value;
+    var id = document.getElementById("stkSize").value;
+    var sz = sizesFor(key).filter(function(x){ return x.id === id; })[0];
+    var qty = Math.max(1, parseInt(document.getElementById("stkQty").value || "1", 10));
+    var fill = parseFloat(document.getElementById("stkFill").value || "1");
+    if (!sz) return;
+    var add = Math.round(sz.count * qty * fill);
+    state.inventory[key] = (state.inventory[key] || 0) + add;
+    state.tracked[key] = true;
+    saveState();
+    document.getElementById("stkQty").value = 1;
+    document.getElementById("stkFill").value = "1";
+    renderInventory();
+    var el = document.querySelector('#invGrid input[data-key="' + key + '"][data-unit="caps"]');
+    if (el){ el.style.boxShadow = "0 0 0 2px var(--gold)"; setTimeout(function(){ el.style.boxShadow = ""; }, 1200); }
+  });
+
   document.getElementById("supGrid").addEventListener("click", function(e){
     var el = e.target; if (!el.classList || !el.classList.contains("logit")) return;
     fillOrderForm(el.getAttribute("data-key"), el.getAttribute("data-vid"));
