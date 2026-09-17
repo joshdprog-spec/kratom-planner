@@ -193,7 +193,7 @@
 <section id="rotation"><div class="wrap">
   <div class="kicker">The rotation</div>
   <h2>One slider sets the week. The rules keep it honest.</h2>
-  <p class="intro">Every strain you keep is a white, a green or a red. Whites and greens lean energising, reds lean calm. The slider decides which colours fill the Day, Night and Late slots; the generator then fills seven days so the same strain never lands in the same slot two days running, no red repeats within a day in either direction, and your reserve strain appears exactly as often as you choose. Nudge the slider and generate again until the week reads right.</p>
+  <p class="intro">Every strain you keep is a white, a green or a red. Whites and greens lean energising, reds lean calm. The slider decides which colours fill the Day, Night and Late slots, and the planner fills the seven days around the guarantees below. Nudge the slider and generate again until the week reads right.</p>
   <div class="spectrum">
     <div class="bar"></div>
     <div class="ends"><span><b>Locked in</b> work &amp; drive</span><span><b>Unwound</b> buzz &amp; ease</span></div>
@@ -263,15 +263,8 @@
   <h2>Because it knows your week, it knows your usage. So it can do the buying math.</h2>
   <div class="tally" id="money"></div>
   <div class="asof" id="asof"></div>
-  <div class="two">
-    <div>
-      <p class="intro">The store's own prices make the case. A bottle bought at list price whenever you run out is the most expensive way to buy the exact same product. The figures above are computed from the live catalog: a three-dose day of standard capsules, bought as the smallest bottle at list, against the cheapest price per capsule the store offers on any size or subscription cadence.</p>
-      <p class="intro">Your own number depends on which strains you keep, how you split capsules and powder, and how you like to buy: least cash out over the next three months, least over a year, or best price per serving. The planner shows that figure on its Stock &amp; orders tab, next to what you'd pay at list.</p>
-    </div>
-    <div class="rules">
-      <b>How it decides.</b> For each strain it takes your weekly usage from the schedule, splits it into on-the-go and at-home doses, then prices every way to cover that usage: each size one-time, each size at an upcoming sale if your stock lasts until then, and each size on every subscription cadence using the store's real plan prices. Ties within one percent go to whichever asks for less money up front. Nothing is ordered until you do it on the store's own site.
-    </div>
-  </div>
+  <p class="intro">The store's own prices make the case. A bottle bought at list price whenever you run out is the most expensive way to buy the exact same product; the same capsules on the right size and cadence cost a fraction. The figures above use the store's current catalog and a three-dose day of standard capsules.</p>
+  <p class="intro">Your own number depends on which strains you keep, how you split capsules and powder, and how you like to buy: least cash out over the next three months, least over a year, or best price per serving. The planner shows that figure on its Stock &amp; orders tab next to what you'd pay at list, and every suggestion links straight to the store's cart with the size and cadence already chosen. Nothing is ordered until you do it there.</p>
 </div></section>
 
 <section id="why"><div class="wrap">
@@ -379,8 +372,8 @@
   function money(n){ return "$" + Math.round(n); }
   var listMo = list * month, bestMo = best * month, save = listMo - bestMo;
   el.innerHTML =
-    '<div class="t"><div class="n">' + money(listMo) + '</div><div class="l">a month, buying as you go</div><div class="s">' + caps + ' capsules a day, 60-count bottles at list price</div></div>' +
-    '<div class="t win"><div class="n">' + money(bestMo) + '</div><div class="l">a month, the planner’s way</div><div class="s">the same ' + caps + ' capsules a day as ' + bestLabel + '</div></div>' +
+    '<div class="t"><div class="n">' + money(listMo) + '</div><div class="l">a month, buying as you go</div><div class="s">' + caps + ' capsules a day, smallest bottles at list price</div></div>' +
+    '<div class="t win"><div class="n">' + money(bestMo) + '</div><div class="l">a month, the planner’s way</div><div class="s">the same ' + caps + ' capsules a day, bought the way it suggests</div></div>' +
     '<div class="t"><div class="n">' + money(save * 12) + '</div><div class="l">back in your pocket a year</div><div class="s"><b>' + Math.round(save / listMo * 100) + '% less</b> for the same product, before any sale</div></div>';
   if (SNAP.fetchedAt) asof.textContent = "Computed from the store’s catalog as of " + new Date(SNAP.fetchedAt).toLocaleDateString() + ". Your own figure depends on your strains and how you buy.";
 })();
