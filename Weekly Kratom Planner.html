@@ -1610,7 +1610,7 @@
         var deliveries = H / pl.days;
         var delivered = v.count * deliveries, usedS = Math.min(delivered, need);
         opts.push({ kind: "sub", v: v, plan: pl, label: v.label + " subscription " + pl.name, cashNow: price,
-                    perServ: (price * deliveries) / usedS * servCe, spend90: price * Math.ceil(90 / pl.days), annual: price * Math.ceil(365 / pl.days),
+                    perServ: (price * deliveries) / usedS * servCe, spend90: price * Math.max(1, 90 / pl.days), annual: price * Math.max(1, 365 / pl.days),
                     coversDays: pl.days, surplus: rate / perDay - 1,
                     link: SITE + "/cart/" + v.id + ":1?selling_plan=" + pl.id });
       });
